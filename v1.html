@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinate Surface Lab</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0b0f14; --surface1:#111820; --surface2:#161f29; --surface3:#1c2733;
+    --border:#233040; --border-strong:#324459;
+    --text:#e7ecf1; --text-sec:#8fa1b3; --text-muted:#5a6c7d;
+    --accent-bg:#16283d; --accent-text:#6fb1f0;
+    --blue:#3d8bdd; --green:#22a67e; --coral:#e2683a;
+    --amber:#efb02f; --violet:#9d7de8; --pink:#e0699a;
+    --grid-line: rgba(111,177,240,0.055);
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; padding:0; color:var(--text);
+    font-family:var(--sans);
+    background-color:var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:44px 20px 90px}
+
+  header{margin-bottom:36px;position:relative}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--accent-text);margin:0 0 10px;display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow::before{content:'';width:16px;height:1px;background:var(--accent-text);display:inline-block}
+  h1{
+    font-family:var(--display);font-size:32px;font-weight:600;font-optical-sizing:auto;
+    margin:0 0 10px;letter-spacing:-0.01em;line-height:1.15;
+  }
+  p.sub{color:var(--text-sec);font-size:14.5px;margin:0;line-height:1.65;max-width:640px}
+
+  h2{
+    font-family:var(--display);font-size:20px;font-weight:600;margin:0 0 4px;
+    letter-spacing:-0.005em;
+  }
+  h3{
+    font-family:var(--mono);font-size:12px;font-weight:600;margin:0 0 10px;
+    color:var(--text-sec);text-transform:uppercase;letter-spacing:0.07em;
+  }
+  .section-sub{color:var(--text-sec);font-size:13px;margin:0 0 18px}
+  section{margin-bottom:40px}
+  .divider{height:1px;background:linear-gradient(90deg, transparent, var(--border) 15%, var(--border) 85%, transparent);margin:38px 0}
+
+  /* ---------- top-level layout: canvas + side panel ---------- */
+  .lab-grid{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+  @media (max-width:880px){.lab-grid{grid-template-columns:1fr}}
+
+  .seg{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+  .seg button{
+    flex:1;min-width:90px;padding:9px;font-family:var(--mono);font-size:12px;font-weight:500;
+    background:var(--surface1);color:var(--text-sec);border:1px solid var(--border);
+    border-radius:7px;cursor:pointer;letter-spacing:0.02em;transition:all .12s ease;
+  }
+  .seg button:hover{background:var(--surface2);color:var(--text)}
+  .seg button.active{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent-text)}
+
+  #canvas-wrap{
+    position:relative;height:460px;background:var(--surface1);
+    border-radius:10px;overflow:hidden;margin-bottom:14px;touch-action:none;
+    border:1px solid var(--border);
+  }
+  #canvas-wrap canvas{width:100%;height:100%;display:block}
+  .hint{
+    position:absolute;bottom:10px;left:14px;font-family:var(--mono);font-size:10.5px;
+    color:var(--text-muted);letter-spacing:0.02em;
+  }
+  .resetbtn{
+    position:absolute;top:10px;right:10px;padding:6px 11px;font-family:var(--mono);font-size:11.5px;
+    background:rgba(17,24,32,0.9);color:var(--text-sec);border:1px solid var(--border);
+    border-radius:6px;cursor:pointer;letter-spacing:0.02em;transition:all .12s ease;
+  }
+  .resetbtn:hover{background:var(--surface2);color:var(--text);border-color:var(--border-strong)}
+  .modebar{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 100px)}
+  .modebar label{
+    display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;
+    background:rgba(17,24,32,0.9);border:1px solid var(--border);border-radius:6px;
+    padding:5px 9px;color:var(--text-sec);cursor:pointer;
+  }
+  .modebar input{accent-color:var(--accent-text);width:12px;height:12px}
+  .submode-bar{
+    position:absolute;top:38px;left:10px;display:flex;gap:4px;flex-wrap:wrap;
+    max-width:calc(100% - 100px);
+  }
+  .submode-bar.hidden{display:none}
+  .submode-bar button{
+    font-family:var(--mono);font-size:10px;padding:4px 8px;border-radius:5px;
+    background:rgba(17,24,32,0.9);border:1px solid var(--border);color:var(--text-muted);
+    cursor:pointer;letter-spacing:0.02em;
+  }
+  .submode-bar button:hover{color:var(--text-sec)}
+  .submode-bar button.active{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent-text)}
+
+  /* ---------- side panel: layers ---------- */
+  .panel{
+    background:var(--surface1);border-radius:10px;border:1px solid var(--border);
+    padding:14px;margin-bottom:14px;
+  }
+  .layer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+  .layer{
+    background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+    padding:9px 10px;display:flex;align-items:center;gap:8px;
+  }
+  .layer.dim{opacity:0.45}
+  .layer-swatch{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+  .layer-info{flex:1;min-width:0}
+  .layer-eq{font-family:var(--mono);font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .layer-type{font-size:10px;color:var(--text-muted)}
+  .layer-btns{display:flex;gap:4px;flex-shrink:0}
+  .layer-btns button{
+    width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:var(--surface3);
+    color:var(--text-sec);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;
+    line-height:1;
+  }
+  .layer-btns button:hover{color:var(--text);border-color:var(--border-strong)}
+  .empty-note{font-size:12px;color:var(--text-muted);padding:10px 0;text-align:center}
+
+  .addbar{display:flex;gap:6px}
+  .addbar select, .addbar button{
+    font-family:var(--mono);font-size:11.5px;padding:8px 9px;border-radius:7px;
+    border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;
+  }
+  .addbar select{flex:1}
+  .addbar button{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent-text);font-weight:600}
+  .addbar button:hover{filter:brightness(1.15)}
+
+  .savebar{display:flex;gap:6px;margin-top:10px}
+  .savebar input{
+    flex:1;font-family:var(--mono);font-size:11.5px;padding:8px 9px;border-radius:7px;
+    border:1px solid var(--border);background:var(--surface2);color:var(--text);
+  }
+  .savebar button{
+    font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:7px;
+    border:1px solid var(--border);background:var(--surface2);color:var(--text-sec);cursor:pointer;
+  }
+  .savebar button:hover{color:var(--text);border-color:var(--border-strong)}
+  .snap-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .snap{
+    display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:7px;padding:7px 8px;
+  }
+  .snap-name{flex:1;font-family:var(--mono);font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+  .snap-name:hover{color:var(--accent-text)}
+  .snap button{
+    width:20px;height:20px;border-radius:5px;border:1px solid var(--border);background:var(--surface3);
+    color:var(--text-muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center
+  }
+  .snap button:hover{color:var(--coral);border-color:var(--coral)}
+
+  /* ---------- controls (per-active-system sliders) ---------- */
+  #controls{padding:2px 14px}
+  .row{
+    display:flex;align-items:center;gap:8px;padding:11px 0;
+    border-bottom:1px solid var(--border);flex-wrap:wrap;
+  }
+  .row:last-child{border-bottom:none}
+  .row input[type=checkbox]{width:16px;height:16px;flex-shrink:0;accent-color:var(--accent-text)}
+  .row label{font-family:var(--mono);font-size:13px;font-weight:500;min-width:96px;flex-shrink:0}
+  .row input[type=range]{flex:1;min-width:90px;accent-color:var(--accent-text)}
+  .row input[type=number]{
+    width:64px;flex-shrink:0;font-family:var(--mono);font-size:12px;background:var(--surface2);
+    border:1px solid var(--border);border-radius:6px;padding:5px 6px;color:var(--text);text-align:right;
+  }
+  .row .unit{font-family:var(--mono);font-size:11px;color:var(--text-muted);width:14px;flex-shrink:0}
+  .badge{
+    display:inline-block;padding:2px 7px;border-radius:5px;font-family:var(--mono);font-size:9.5px;
+    margin-left:5px;background:var(--surface2);color:var(--text-sec);border:1px solid var(--border);
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- custom equation entry ---------- */
+  .eqentry{display:flex;gap:6px;margin-bottom:8px}
+  .eqentry input{
+    flex:1;font-family:var(--mono);font-size:13px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:7px;padding:9px 10px;color:var(--accent-text);
+  }
+  .eqentry input.err{border-color:var(--coral);color:var(--coral)}
+  .eqentry button{
+    font-family:var(--mono);font-size:12px;padding:9px 13px;border-radius:7px;
+    background:var(--accent-bg);color:var(--accent-text);border:1px solid var(--accent-text);
+    cursor:pointer;font-weight:600;flex-shrink:0;
+  }
+  .eqentry button:hover{filter:brightness(1.15)}
+  .eqerr{font-size:11.5px;color:var(--coral);margin:-4px 0 8px;min-height:14px}
+  .eqhint{font-size:11px;color:var(--text-muted);margin:0 0 12px;line-height:1.6}
+  .eqhint code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--mono);color:var(--text-sec)}
+  .presetrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .presetrow button{
+    font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;
+    background:var(--surface2);border:1px solid var(--border);color:var(--text-sec);cursor:pointer;
+  }
+  .presetrow button:hover{color:var(--text);border-color:var(--border-strong)}
+
+  /* ---------- vector calc / diff-length / unit vector panels ---------- */
+  .calcgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:520px){.calcgrid{grid-template-columns:1fr}}
+  .calcbox{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 12px}
+  .calcbox-title{font-family:var(--mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px}
+  .calcbox .expr{font-family:var(--mono);font-size:13px;color:var(--text);line-height:1.7}
+  .calcbox .expr .lbl{color:var(--text-muted)}
+  .calcbox .val{color:var(--accent-text)}
+  .fieldrow{display:flex;gap:6px;margin-bottom:10px}
+  .fieldrow input{
+    flex:1;font-family:var(--mono);font-size:12.5px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:6px;padding:7px 8px;color:var(--text);text-align:center;
+  }
+  .fieldrow input.err{border-color:var(--coral)}
+  .fieldnote{font-size:11px;color:var(--text-muted);margin:0 0 10px;line-height:1.5}
+
+  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .toggle-row label{
+    display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;color:var(--text-sec);cursor:pointer;
+  }
+  .toggle-row input{accent-color:var(--accent-text);width:14px;height:14px}
+
+  .eqbox{
+    background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+    padding:11px 14px;margin-top:4px;
+  }
+  .eqbox-title{
+    font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-bottom:6px;
+    text-transform:uppercase;letter-spacing:0.07em;
+  }
+  .eqinput{
+    width:100%;background:var(--surface3);border:1px solid var(--border);
+    border-radius:6px;padding:8px 10px;color:var(--accent-text);font-size:13px;
+    font-family:var(--mono);letter-spacing:0.01em;
+  }
+
+  .legend{display:flex;gap:16px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--text-sec);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  footer{
+    font-family:var(--mono);color:var(--text-muted);font-size:11px;text-align:center;
+    margin-top:48px;letter-spacing:0.02em;
+  }
+
+  .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .tabs button{
+    font-family:var(--mono);font-size:12px;padding:9px 14px;background:none;border:none;
+    color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+    letter-spacing:0.02em;
+  }
+  .tabs button:hover{color:var(--text-sec)}
+  .tabs button.active{color:var(--accent-text);border-bottom-color:var(--accent-text)}
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media (max-width:720px){.grid3{grid-template-columns:1fr}}
+  .card{
+    background:var(--surface1);border:1px solid var(--border);border-radius:10px;
+    overflow:hidden;display:flex;flex-direction:column;position:relative;
+  }
+  .card::before, .card::after{
+    content:'';position:absolute;width:9px;height:9px;pointer-events:none;z-index:2;
+    border-color:var(--border-strong);opacity:.8;
+  }
+  .card::before{top:6px;left:6px;border-top:1px solid;border-left:1px solid}
+  .card::after{top:6px;right:6px;border-top:1px solid;border-right:1px solid}
+  .card canvas{width:100%;height:130px;display:block;background:var(--surface2)}
+  .card-body{padding:12px 14px 14px}
+  .card-eq{font-family:var(--mono);font-size:14px;font-weight:600;margin:0 0 4px}
+  .card-eq .const{color:var(--text-muted);font-weight:400}
+  .card-name{font-size:12px;color:var(--text-sec);margin:0 0 5px}
+  .card-desc{font-size:11px;color:var(--text-muted);margin:0;line-height:1.5}
+  .sysgroup{margin-bottom:26px}
+  .sysgroup-title{
+    display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;font-weight:500;
+    color:var(--text-sec);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">coordinate geometry &middot; layered visualization lab</p>
+    <h1>Coordinate Surface Lab</h1>
+    <p class="sub">Build a scene from preset constant-coordinate surfaces or your own equations, layer several at once, inspect differential length elements, and probe a point for gradient / divergence / curl. Drag the canvas to rotate, scroll to zoom.</p>
+  </header>
+
+  <div class="lab-grid">
+    <!-- ================= LEFT: CANVAS + TABS ================= -->
+    <div>
+      <div class="seg" role="tablist" aria-label="coordinate system">
+        <button id="btn-cart" class="active" onclick="setSystem('cart')">Cartesian</button>
+        <button id="btn-cyl" onclick="setSystem('cyl')">Cylindrical</button>
+        <button id="btn-sph" onclick="setSystem('sph')">Spherical</button>
+      </div>
+
+      <div id="canvas-wrap">
+        <canvas id="c"></canvas>
+        <div class="modebar">
+          <label><input type="checkbox" id="chk-unitvec" onchange="toggleUnitVectors(this.checked)"> unit vectors</label>
+          <label><input type="checkbox" id="chk-intersect" onchange="toggleIntersections(this.checked)"> intersections</label>
+        </div>
+        <div class="submode-bar hidden" id="intersect-submode">
+          <button id="submode-point" class="active" onclick="setIntersectionMode('point')">&#9679; point</button>
+          <button id="submode-curve" onclick="setIntersectionMode('curve')">&#9670; curve</button>
+        </div>
+        <button class="resetbtn" onclick="resetView()">Reset view</button>
+        <div class="hint">drag to rotate &middot; scroll to zoom</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="presets" onclick="setTab('presets')">Presets</button>
+        <button class="tab-btn" data-tab="custom" onclick="setTab('custom')">Custom equation</button>
+        <button class="tab-btn" data-tab="calc" onclick="setTab('calc')">Vector calculus</button>
+        <button class="tab-btn" data-tab="diff" onclick="setTab('diff')">Differential elements</button>
+      </div>
+
+      <div class="tabpanel active" id="tab-presets">
+        <div class="panel">
+          <h3>Active system &middot; c-values</h3>
+          <div id="controls"></div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-custom">
+        <div class="panel">
+          <h3>Custom surface: f(x, y, z) = c</h3>
+          <div class="presetrow" id="quadric-presets"></div>
+          <div class="eqentry">
+            <input type="text" id="custom-eq" placeholder="e.g. x^2/4 + y^2/4 - z^2/9" value="x^2 + y^2 - z^2">
+            <button onclick="addCustomLayer()">+ Add layer</button>
+          </div>
+          <div class="eqerr" id="custom-eq-err"></div>
+          <div class="eqhint">
+            Variables <code>x y z</code>. Operators <code>+ - * / ^</code>, functions <code>sin cos tan sqrt exp log abs</code>, constant <code>pi</code>. Renders as an isosurface at value <code>c</code> (editable per-layer once added).
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-calc">
+        <div class="panel">
+          <h3>Probe point</h3>
+          <div class="fieldrow">
+            <input type="number" id="probe-x" value="1" step="0.1">
+            <input type="number" id="probe-y" value="1" step="0.1">
+            <input type="number" id="probe-z" value="1" step="0.1">
+          </div>
+          <p class="fieldnote">Point (x, y, z) where gradient / divergence / curl are evaluated. Shown as a marker with vectors in the scene.</p>
+
+          <h3>Scalar field f(x,y,z) &mdash; for &nabla;f</h3>
+          <div class="eqentry">
+            <input type="text" id="scalar-field" value="x^2 + y*z" placeholder="e.g. x^2 + y*z">
+            <button onclick="computeGradient()">&nabla;f</button>
+          </div>
+          <div class="eqerr" id="scalar-field-err"></div>
+
+          <h3>Vector field F = (P, Q, R) &mdash; for &nabla;&middot;F and &nabla;&times;F</h3>
+          <div class="fieldrow">
+            <input type="text" id="field-p" value="x" placeholder="P(x,y,z)">
+            <input type="text" id="field-q" value="y" placeholder="Q(x,y,z)">
+            <input type="text" id="field-r" value="-2*z" placeholder="R(x,y,z)">
+          </div>
+          <div class="eqentry" style="margin-bottom:6px">
+            <button style="flex:1" onclick="computeDivCurl()">&nabla;&middot;F and &nabla;&times;F</button>
+          </div>
+          <div class="eqerr" id="vector-field-err"></div>
+
+          <div class="calcgrid" id="calc-results" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-diff">
+        <div class="panel">
+          <h3>Differential length elements &mdash; active system</h3>
+          <div class="calcbox">
+            <div class="calcbox-title" id="diff-sysname">Cartesian</div>
+            <div class="expr" id="diff-expr"></div>
+          </div>
+          <p class="fieldnote" style="margin-top:12px">These update with the sliders on the Presets tab. The scale factors (h&#8321;, h&#8322;, h&#8323;) are the multipliers that turn a change in each coordinate into an actual length &mdash; this is why <code>d&phi;</code> alone isn't a length, but <code>&rho;&thinsp;d&phi;</code> is.</p>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--blue)"></span>1st coord (x / &rho; / r)</span>
+        <span><span class="dot" style="background:var(--green)"></span>2nd coord (y / &phi; / &theta;)</span>
+        <span><span class="dot" style="background:var(--coral)"></span>3rd coord (z / z / &phi;)</span>
+      </div>
+    </div>
+
+    <!-- ================= RIGHT: LAYERS + SAVE/LOAD ================= -->
+    <div>
+      <div class="panel">
+        <h3>Scene layers</h3>
+        <div class="layer-list" id="layer-list"></div>
+        <div class="addbar">
+          <select id="preset-select"></select>
+          <button onclick="addPresetLayer()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Save / compare scenes</h3>
+        <div class="savebar">
+          <input type="text" id="snap-name" placeholder="name this scene&hellip;">
+          <button onclick="saveSnapshot()">Save</button>
+        </div>
+        <div class="snap-list" id="snap-list"></div>
+        <div class="savebar" style="margin-top:10px">
+          <button style="flex:1" onclick="exportJSON()">Export JSON</button>
+          <button style="flex:1" onclick="document.getElementById('import-file').click()">Import</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importJSON(event)">
+      </div>
+
+      <div class="eqbox">
+        <div class="eqbox-title">Equation readout</div>
+        <input type="text" id="eqinput" class="eqinput" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <section id="reference">
+    <h2>Reference: all nine constant-coordinate surfaces</h2>
+    <p class="section-sub">Each card previews the surface swept by holding that one coordinate constant. Click "+ Add" in the panel above to bring any of these into your scene.</p>
+
+    <div class="sysgroup">
+      <div class="sysgroup-title"><span class="dot" style="background:var(--blue)"></span>Cartesian (x, y, z)</div>
+      <div class="grid3" id="ref-cart"></div>
+    </div>
+    <div class="sysgroup">
+      <div class="sysgroup-title"><span class="dot" style="background:var(--green)"></span>Cylindrical (&rho;, &phi;, z)</div>
+      <div class="grid3" id="ref-cyl"></div>
+    </div>
+    <div class="sysgroup">
+      <div class="sysgroup-title"><span class="dot" style="background:var(--coral)"></span>Spherical (r, &theta;, &phi;)</div>
+      <div class="grid3" id="ref-sph"></div>
+    </div>
+  </section>
+
+  <footer>Coordinate Surface Lab &middot; layered scenes, custom isosurfaces, vector calculus at a point</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   PART 0 — tiny expression parser/evaluator (no external deps)
+   Supports: + - * / ^ unary minus, parens, functions sin cos tan sqrt
+   exp log abs, variables x y z, constant pi. Produces a JS closure
+   f(x,y,z) -> number. Throws on invalid input (caught by callers).
+   ===================================================================== */
+function compileExpr(src){
+  const toks = tokenize(src);
+  let pos = 0;
+  function peek(){ return toks[pos]; }
+  function next(){ return toks[pos++]; }
+  function expect(t){ if(!peek() || peek().v !== t) throw new Error('expected '+t); pos++; }
+
+  function parseExpr(){ return parseAdd(); }
+  function parseAdd(){
+    let n = parseMul();
+    while(peek() && (peek().v==='+'||peek().v==='-')){
+      const op = next().v; const rhs = parseMul();
+      const l = n; n = op==='+' ? (x,y,z)=>l(x,y,z)+rhs(x,y,z) : (x,y,z)=>l(x,y,z)-rhs(x,y,z);
+    }
+    return n;
+  }
+  function parseMul(){
+    let n = parseUnary();
+    while(peek() && (peek().v==='*'||peek().v==='/')){
+      const op = next().v; const rhs = parseUnary();
+      const l = n; n = op==='*' ? (x,y,z)=>l(x,y,z)*rhs(x,y,z) : (x,y,z)=>l(x,y,z)/rhs(x,y,z);
+    }
+    return n;
+  }
+  function parseUnary(){
+    if(peek() && peek().v==='-'){ next(); const r = parseUnary(); return (x,y,z)=>-r(x,y,z); }
+    if(peek() && peek().v==='+'){ next(); return parseUnary(); }
+    return parsePow();
+  }
+  function parsePow(){
+    let n = parsePrimary();
+    if(peek() && peek().v==='^'){
+      next(); const rhs = parseUnary();
+      const l = n; n = (x,y,z)=>Math.pow(l(x,y,z), rhs(x,y,z));
+    }
+    return n;
+  }
+  const FUNCS = {
+    sin:Math.sin, cos:Math.cos, tan:Math.tan, sqrt:Math.sqrt, exp:Math.exp,
+    log:Math.log, abs:Math.abs, asin:Math.asin, acos:Math.acos, atan:Math.atan,
+    sinh:Math.sinh, cosh:Math.cosh, tanh:Math.tanh
+  };
+  function parsePrimary(){
+    const t = peek();
+    if(!t) throw new Error('unexpected end');
+    if(t.type==='num'){ next(); const v=t.v; return ()=>v; }
+    if(t.type==='id'){
+      next();
+      if(peek() && peek().v==='('){
+        next();
+        const arg = parseExpr();
+        expect(')');
+        if(t.v==='pi') return ()=>Math.PI;
+        const fn = FUNCS[t.v];
+        if(!fn) throw new Error('unknown function '+t.v);
+        return (x,y,z)=>fn(arg(x,y,z));
+      }
+      if(t.v==='x') return (x,y,z)=>x;
+      if(t.v==='y') return (x,y,z)=>y;
+      if(t.v==='z') return (x,y,z)=>z;
+      if(t.v==='pi') return ()=>Math.PI;
+      if(t.v==='e') return ()=>Math.E;
+      throw new Error('unknown identifier '+t.v);
+    }
+    if(t.v==='('){
+      next(); const inner = parseExpr(); expect(')'); return inner;
+    }
+    throw new Error('unexpected token '+t.v);
+  }
+
+  const fn = parseExpr();
+  if(pos !== toks.length) throw new Error('trailing input');
+  // sanity check it evaluates to a number somewhere
+  const test = fn(1,1,1);
+  if(typeof test !== 'number' || Number.isNaN(test)) { /* allow NaN at specific points, still valid fn */ }
+  return fn;
+}
+function tokenize(src){
+  const toks = []; let i=0;
+  while(i<src.length){
+    const c = src[i];
+    if(/\s/.test(c)){ i++; continue; }
+    if(/[0-9.]/.test(c)){
+      let j=i; while(j<src.length && /[0-9.]/.test(src[j])) j++;
+      toks.push({type:'num', v:parseFloat(src.slice(i,j))}); i=j; continue;
+    }
+    if(/[a-zA-Z_]/.test(c)){
+      let j=i; while(j<src.length && /[a-zA-Z0-9_]/.test(src[j])) j++;
+      toks.push({type:'id', v:src.slice(i,j)}); i=j; continue;
+    }
+    if('+-*/^()'.includes(c)){ toks.push({type:'op', v:c}); i++; continue; }
+    throw new Error('bad character: '+c);
+  }
+  return toks;
+}
+function tryCompile(src){
+  try{ return { fn: compileExpr(src), err: null }; }
+  catch(e){ return { fn: null, err: e.message }; }
+}
+function numDeriv(fn, x, y, z, wrt){
+  const h = 1e-4;
+  if(wrt==='x') return (fn(x+h,y,z)-fn(x-h,y,z))/(2*h);
+  if(wrt==='y') return (fn(x,y+h,z)-fn(x,y-h,z))/(2*h);
+  return (fn(x,y,z+h)-fn(x,y,z-h))/(2*h);
+}
+
+/* =====================================================================
+   PART 1 — three.js drawing primitives (planes, cylinders, spheres,
+   cones, half-planes, arcs, unit-vector arrows, isosurfaces)
+   ===================================================================== */
+function meshMat(color, opacity){
+  return new THREE.MeshBasicMaterial({color, transparent:true, opacity:opacity||0.32, side:THREE.DoubleSide});
+}
+function wireMat(color){
+  return new THREE.LineBasicMaterial({color, transparent:true, opacity:0.9});
+}
+function axisLines(scene, len, color){
+  function line(dx,dy,dz){
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(dx,dy,dz)]);
+    const m = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.4});
+    return new THREE.Line(g,m);
+  }
+  scene.add(line(len,0,0)); scene.add(line(0,len,0)); scene.add(line(0,0,len));
+}
+function buildPlane(group, axis, val, color, size, opacity){
+  const geo = new THREE.PlaneGeometry(size, size, 6, 6);
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireMat(color));
+  if(axis==='x'){ mesh.rotation.y=Math.PI/2; mesh.position.x=val; wire.rotation.y=Math.PI/2; wire.position.x=val; }
+  if(axis==='y'){ mesh.rotation.x=Math.PI/2; mesh.position.y=val; wire.rotation.x=Math.PI/2; wire.position.y=val; }
+  if(axis==='z'){ mesh.position.z=val; wire.position.z=val; }
+  group.add(mesh); group.add(wire);
+}
+function buildCylinder(group, rho, color, height, opacity){
+  const geo = new THREE.CylinderGeometry(rho, rho, height, 36, 1, true);
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  mesh.rotation.x = Math.PI/2;
+  group.add(mesh);
+  const wireGeo = new THREE.CylinderGeometry(rho, rho, height, 20, 1, true);
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(wireGeo), wireMat(color));
+  wire.rotation.x = Math.PI/2;
+  group.add(wire);
+}
+function buildHalfPlane(group, phi, color, size, height, opacity){
+  const shape = new THREE.PlaneGeometry(size, height, 1, 1);
+  const mesh = new THREE.Mesh(shape, meshMat(color, opacity));
+  mesh.position.set(Math.cos(phi)*size/2, 0, Math.sin(phi)*size/2);
+  mesh.rotation.x = Math.PI/2;
+  mesh.rotation.z = phi;
+  group.add(mesh);
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(shape), wireMat(color));
+  wire.position.copy(mesh.position); wire.rotation.copy(mesh.rotation);
+  group.add(wire);
+}
+function buildSphere(group, r, color, opacity){
+  const geo = new THREE.SphereGeometry(r, 28, 20);
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  group.add(mesh);
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.SphereGeometry(r,14,10)), wireMat(color));
+  group.add(wire);
+}
+function buildCone(group, theta, color, h, opacity){
+  const r = Math.tan(theta) * h;
+  const geo = new THREE.ConeGeometry(Math.abs(r), h, 28, 1, true);
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  mesh.rotation.x = Math.PI;
+  mesh.position.y = h/2;
+  group.add(mesh);
+}
+function buildEllipsoid(group, a,b,c, color, opacity){
+  const geo = new THREE.SphereGeometry(1, 28, 20);
+  geo.scale(a,b,c);
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  group.add(mesh);
+  const wgeo = new THREE.SphereGeometry(1,14,10); wgeo.scale(a,b,c);
+  group.add(new THREE.LineSegments(new THREE.EdgesGeometry(wgeo), wireMat(color)));
+}
+
+const BLUE=0x378ADD, GREEN=0x1D9E75, CORAL=0xD85A30, AMBER=0xEFB02F, VIOLET=0x9D7DE8, PINK=0xE0699A;
+const LAYER_PALETTE = [BLUE, GREEN, CORAL, AMBER, VIOLET, PINK];
+
+function addAxisLabel(scene, text, x, y, z){
+  const size = 64;
+  const cvs = document.createElement('canvas');
+  cvs.width = size; cvs.height = size;
+  const ctx = cvs.getContext('2d');
+  ctx.font = '500 40px -apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif';
+  ctx.fillStyle = '#e8e6df';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, size/2, size/2);
+  const tex = new THREE.CanvasTexture(cvs);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.4,0.4,0.4);
+  sprite.position.set(x,y,z);
+  scene.add(sprite);
+}
+function addTextSprite(scene, text, x, y, z, color){
+  const size = 96;
+  const cvs = document.createElement('canvas');
+  cvs.width = size; cvs.height = size;
+  const ctx = cvs.getContext('2d');
+  ctx.font = '600 30px -apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif';
+  const hex = '#' + color.toString(16).padStart(6,'0');
+  ctx.fillStyle = hex;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, size/2, size/2);
+  const tex = new THREE.CanvasTexture(cvs);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.5,0.5,0.5);
+  sprite.position.set(x,y,z);
+  scene.add(sprite);
+}
+function arrowHeadAt(group, tipVec, dirVec, color, scale){
+  const geo = new THREE.ConeGeometry(0.045*(scale||1), 0.14*(scale||1), 12);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color}));
+  mesh.position.copy(tipVec);
+  const up = new THREE.Vector3(0,1,0);
+  const quat = new THREE.Quaternion().setFromUnitVectors(up, dirVec.clone().normalize());
+  mesh.quaternion.copy(quat);
+  group.add(mesh);
+}
+function curveLine(group, points, color){
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const mat = new THREE.LineBasicMaterial({color, linewidth:2});
+  group.add(new THREE.Line(geo, mat));
+}
+function pointMarker(group, x, y, z, color, size){
+  const geo = new THREE.SphereGeometry(size||0.06, 16, 12);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color}));
+  mesh.position.set(x,y,z);
+  group.add(mesh);
+}
+function vectorArrow(group, origin, dir, color, label){
+  const len = dir.length();
+  if(len < 1e-6) return;
+  const tip = origin.clone().add(dir);
+  curveLine(group, [origin, tip], color);
+  const shaftDir = dir.clone().normalize();
+  const headBase = tip.clone().sub(shaftDir.clone().multiplyScalar(0.14));
+  arrowHeadAt(group, tip, shaftDir, color);
+  if(label) addTextSprite(group, label, tip.x+shaftDir.x*0.22, tip.y+shaftDir.y*0.22, tip.z+shaftDir.z*0.22, color);
+}
+function toRad(deg){ return deg * Math.PI / 180; }
+function toDeg(rad){ return rad * 180 / Math.PI; }
+
+function drawPhiArc(group, phiRad, color){
+  const R = 0.85;
+  const n = Math.max(4, Math.round(Math.abs(toDeg(phiRad))/4));
+  const pts = [];
+  for(let i=0;i<=n;i++){
+    const t = (phiRad * i) / n;
+    pts.push(new THREE.Vector3(R*Math.cos(t), R*Math.sin(t), 0));
+  }
+  if(pts.length > 1){
+    curveLine(group, pts, color);
+    const tip = pts[pts.length-1]; const prev = pts[pts.length-2];
+    arrowHeadAt(group, tip, tip.clone().sub(prev), color);
+  }
+  const mid = phiRad/2, labelR = R + 0.35;
+  addTextSprite(group, toDeg(phiRad).toFixed(0)+'\u00b0', labelR*Math.cos(mid), labelR*Math.sin(mid), 0, color);
+}
+function drawThetaArc(group, thetaRad, phiForPlane, color){
+  const R = 0.85;
+  const n = Math.max(4, Math.round(Math.abs(toDeg(thetaRad))/4));
+  const pts = [];
+  const cx = Math.cos(phiForPlane), sy = Math.sin(phiForPlane);
+  for(let i=0;i<=n;i++){
+    const t = (thetaRad * i) / n;
+    const rad = R*Math.sin(t), z = R*Math.cos(t);
+    pts.push(new THREE.Vector3(rad*cx, rad*sy, z));
+  }
+  if(pts.length > 1){
+    curveLine(group, pts, color);
+    const tip = pts[pts.length-1]; const prev = pts[pts.length-2];
+    arrowHeadAt(group, tip, tip.clone().sub(prev), color);
+  }
+  const mid = thetaRad/2, labelR = R + 0.35, radm = labelR*Math.sin(mid);
+  addTextSprite(group, toDeg(thetaRad).toFixed(0)+'\u00b0', radm*cx, radm*sy, labelR*Math.cos(mid), color);
+}
+
+/* ---- lightweight marching-cubes-ish isosurface via marching tetrahedra
+   over a coarse grid; good enough for interactive quadric-scale surfaces ---- */
+function marchingTetrahedra(fn, c, bounds, res){
+  const {xmin,xmax,ymin,ymax,zmin,zmax} = bounds;
+  const nx=res, ny=res, nz=res;
+  const dx=(xmax-xmin)/nx, dy=(ymax-ymin)/ny, dz=(zmax-zmin)/nz;
+  const val = new Float32Array((nx+1)*(ny+1)*(nz+1));
+  function idx(i,j,k){ return (i*(ny+1)+j)*(nz+1)+k; }
+  function px(i){ return xmin+i*dx; } function py(j){ return ymin+j*dy; } function pz(k){ return zmin+k*dz; }
+  for(let i=0;i<=nx;i++) for(let j=0;j<=ny;j++) for(let k=0;k<=nz;k++){
+    let v;
+    try{ v = fn(px(i),py(j),pz(k)) - c; if(!isFinite(v)) v = 1e6; }
+    catch(e){ v = 1e6; }
+    val[idx(i,j,k)] = v;
+  }
+  const positions = [];
+  function interp(p1,v1,p2,v2){
+    const t = Math.abs(v2-v1) < 1e-9 ? 0.5 : v1/(v1-v2);
+    return [p1[0]+t*(p2[0]-p1[0]), p1[1]+t*(p2[1]-p1[1]), p1[2]+t*(p2[2]-p1[2])];
+  }
+  // Split each cube into 6 tetrahedra using a standard vertex order
+  const CORNER_OFFSETS = [
+    [0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]
+  ];
+  const TET_DECOMP = [
+    [0,1,3,4],[1,2,3,6],[1,3,4,6],[1,4,5,6],[3,4,6,7],[1,3,6,4]
+  ];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++) for(let k=0;k<nz;k++){
+    const cornerPos = CORNER_OFFSETS.map(([a,b,cc])=>[px(i+a),py(j+b),pz(k+cc)]);
+    const cornerVal = CORNER_OFFSETS.map(([a,b,cc])=>val[idx(i+a,j+b,k+cc)]);
+    for(const tet of TET_DECOMP){
+      const p = tet.map(t=>cornerPos[t]);
+      const v = tet.map(t=>cornerVal[t]);
+      let mask = 0;
+      for(let t=0;t<4;t++) if(v[t] > 0) mask |= (1<<t);
+      if(mask===0 || mask===15) continue;
+      const edges = [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
+      const cutPts = {};
+      for(const [a,b] of edges){
+        const signA = v[a]>0, signB = v[b]>0;
+        if(signA !== signB){
+          cutPts[a+'_'+b] = interp(p[a],v[a],p[b],v[b]);
+        }
+      }
+      const keys = Object.keys(cutPts);
+      if(keys.length===3){
+        positions.push(...cutPts[keys[0]], ...cutPts[keys[1]], ...cutPts[keys[2]]);
+      } else if(keys.length===4){
+        positions.push(...cutPts[keys[0]], ...cutPts[keys[1]], ...cutPts[keys[2]]);
+        positions.push(...cutPts[keys[0]], ...cutPts[keys[2]], ...cutPts[keys[3]]);
+      }
+    }
+  }
+  return positions;
+}
+function buildIsosurfaceMesh(group, fn, c, color, opacity, res){
+  const bounds = {xmin:-3,xmax:3,ymin:-3,ymax:3,zmin:-3,zmax:3};
+  const positions = marchingTetrahedra(fn, c, bounds, res||22);
+  if(positions.length < 9) return false;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, meshMat(color, opacity));
+  group.add(mesh);
+  return true;
+}
+
+/* =====================================================================
+   PART 2 — reference cards (unchanged small preview scenes)
+   ===================================================================== */
+const refCards = [
+  {sys:'ref-cart', sym:'x', desc:'plane parallel to the yz-plane', color:BLUE, draw:(g)=>buildPlane(g,'x',0.9,BLUE,2.6)},
+  {sys:'ref-cart', sym:'y', desc:'plane parallel to the xz-plane', color:GREEN, draw:(g)=>buildPlane(g,'y',0.9,GREEN,2.6)},
+  {sys:'ref-cart', sym:'z', desc:'plane parallel to the xy-plane', color:CORAL, draw:(g)=>buildPlane(g,'z',0.9,CORAL,2.6)},
+  {sys:'ref-cyl', sym:'\u03c1', desc:'cylinder, axis along z', color:BLUE, draw:(g)=>buildCylinder(g,0.9,BLUE,2.6)},
+  {sys:'ref-cyl', sym:'\u03c6', desc:'half-plane hinged on z-axis', color:GREEN, draw:(g)=>buildHalfPlane(g,0.7,GREEN,2.6,2.6)},
+  {sys:'ref-cyl', sym:'z', desc:'plane, same as Cartesian', color:CORAL, draw:(g)=>buildPlane(g,'z',0.9,CORAL,2.6)},
+  {sys:'ref-sph', sym:'r', desc:'sphere centered at origin', color:BLUE, draw:(g)=>buildSphere(g,1.1,BLUE)},
+  {sys:'ref-sph', sym:'\u03b8', desc:'cone with apex at origin', color:GREEN, draw:(g)=>buildCone(g,0.7,GREEN,2.2)},
+  {sys:'ref-sph', sym:'\u03c6', desc:'half-plane, same as cylindrical', color:CORAL, draw:(g)=>buildHalfPlane(g,0.7,CORAL,2.6,2.6)}
+];
+function makeCard(spec){
+  const container = document.getElementById(spec.sys);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML =
+    '<canvas></canvas>' +
+    '<div class="card-body">' +
+      '<p class="card-eq">'+spec.sym+' <span class="const">= c</span></p>' +
+      '<p class="card-name">'+spec.desc+'</p>' +
+    '</div>';
+  container.appendChild(card);
+  const canvas = card.querySelector('canvas');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+  camera.position.set(3.4, 2.4, 3.4);
+  camera.lookAt(0,0,0);
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  axisLines(scene, 2.2, 0x888780);
+  const group = new THREE.Group();
+  scene.add(group);
+  spec.draw(group);
+  scene.rotation.set(-0.3, 0.6, 0);
+  function resize(){
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if(w===0||h===0) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(canvas);
+  let t = 0;
+  function loop(){
+    requestAnimationFrame(loop); t += 0.004;
+    scene.rotation.y = 0.6 + Math.sin(t)*0.35;
+    renderer.render(scene, camera);
+  }
+  loop();
+}
+refCards.forEach(makeCard);
+
+/* =====================================================================
+   PART 3 — main interactive scene: state, layers, camera orbit
+   ===================================================================== */
+let iScene, iCamera, iRenderer, iGroup, unitVecGroup;
+let system = 'cart';
+let showUnitVectors = false;
+let showIntersections = false;
+let intersectionMode = 'point'; // 'point' | 'curve'
+
+const state = {
+  cart: { x:{on:true,v:1}, y:{on:false,v:1}, z:{on:false,v:1} },
+  cyl:  { rho:{on:true,v:1.2}, phi:{on:false,v:0}, z:{on:false,v:1} },
+  sph:  { r:{on:true,v:1.5}, theta:{on:false,v:Math.PI/2}, phi:{on:false,v:0} }
+};
+const defs = {
+  cart: [['x','x'],['y','y'],['z','z']],
+  cyl:  [['rho','\u03c1'],['phi','\u03c6'],['z','z']],
+  sph:  [['r','r'],['theta','\u03b8'],['phi','\u03c6']]
+};
+const isAngle = { x:false, y:false, z:false, rho:false, phi:true, theta:true, r:false };
+const ranges = {
+  cart: {x:[0.3,3,0.1], y:[0.3,3,0.1], z:[0.3,3,0.1]},
+  cyl:  {rho:[0.3,3,0.1], z:[0.3,3,0.1]},
+  sph:  {r:[0.3,3,0.1]}
+};
+const sliderMeta = {
+  phi:   { min:-180, max:180, step:1, offsetDeg:0 },
+  theta: { min:-90,  max:90,  step:1, offsetDeg:90 }
+};
+function trueDegFromSlider(key, sliderDeg){ return sliderDeg + sliderMeta[key].offsetDeg; }
+function sliderFromTrueDeg(key, trueDeg){ return trueDeg - sliderMeta[key].offsetDeg; }
+const surfNames = { x:'plane', y:'plane', z:'plane', rho:'cylinder', phi:'half-plane', theta:'cone', r:'sphere' };
+const baseAz = -0.78, baseEl = 0.62, baseDist = 6.2;
+let az = baseAz, el = baseEl, camDist = baseDist;
+
+function updateCameraFromOrbit(){
+  const x = camDist * Math.cos(el) * Math.cos(az);
+  const y = camDist * Math.cos(el) * Math.sin(az);
+  const z = camDist * Math.sin(el);
+  iCamera.position.set(x, y, z);
+  iCamera.up.set(0,0,1);
+  iCamera.lookAt(0,0,0);
+}
+function colorFor(key){
+  if(['x','rho','r'].includes(key)) return BLUE;
+  if(['y','phi','theta'].includes(key)) return GREEN;
+  return CORAL;
+}
+
+/* ---------------- LAYER SYSTEM ----------------
+   Each layer is { id, kind: 'preset'|'custom', sys, key, value, label, color, on }
+   Presets reference the live state[sys][key] value so slider changes propagate.
+   Custom layers store their own fn source + editable c value.
+*/
+let layers = [];
+let layerCounter = 1;
+const QUADRIC_PRESETS = [
+  {label:'Ellipsoid', expr:'x^2/4 + y^2/2.25 + z^2/1', c:1},
+  {label:'Elliptic paraboloid', expr:'x^2/4 + y^2/4 - z', c:0},
+  {label:'Hyperboloid (1 sheet)', expr:'x^2/4 + y^2/4 - z^2/4', c:1},
+  {label:'Hyperboloid (2 sheet)', expr:'x^2/4 + y^2/4 - z^2/4', c:-1},
+  {label:'Saddle', expr:'x^2/4 - y^2/4 - z', c:0},
+  {label:'Double cone', expr:'x^2/4 + y^2/4 - z^2/4', c:0}
+];
+function nextColor(){
+  return LAYER_PALETTE[(layers.length) % LAYER_PALETTE.length];
+}
+function populatePresetSelect(){
+  const sel = document.getElementById('preset-select');
+  sel.innerHTML = '';
+  const opts = [
+    ['cart-x','Cartesian x = c'], ['cart-y','Cartesian y = c'], ['cart-z','Cartesian z = c'],
+    ['cyl-rho','Cylindrical \u03c1 = c'], ['cyl-phi','Cylindrical \u03c6 = c'], ['cyl-z','Cylindrical z = c'],
+    ['sph-r','Spherical r = c'], ['sph-theta','Spherical \u03b8 = c'], ['sph-phi','Spherical \u03c6 = c']
+  ];
+  opts.forEach(([v,l])=>{
+    const o = document.createElement('option'); o.value=v; o.textContent=l; sel.appendChild(o);
+  });
+}
+function addPresetLayer(){
+  const sel = document.getElementById('preset-select');
+  const [sys,key] = sel.value.split('-');
+  const sysKey = sys==='cart'?'cart':sys==='cyl'?'cyl':'sph';
+  const stateKey = key==='theta'?'theta':key;
+  const label = sel.options[sel.selectedIndex].textContent;
+  layers.push({
+    id: layerCounter++, kind:'preset', sys:sysKey, key:stateKey,
+    color: nextColor(), on:true, label
+  });
+  renderLayerList(); render3d();
+}
+function addCustomLayer(){
+  const input = document.getElementById('custom-eq');
+  const errBox = document.getElementById('custom-eq-err');
+  const src = input.value.trim();
+  const {fn, err} = tryCompile(src);
+  if(err){ input.classList.add('err'); errBox.textContent = 'Parse error: ' + err; return; }
+  input.classList.remove('err'); errBox.textContent = '';
+  layers.push({
+    id: layerCounter++, kind:'custom', expr:src, fn, c:0, color: nextColor(), on:true,
+    label: src + ' = 0'
+  });
+  renderLayerList(); render3d();
+}
+function addQuadricPreset(preset){
+  const {fn, err} = tryCompile(preset.expr);
+  if(err) return;
+  layers.push({
+    id: layerCounter++, kind:'custom', expr:preset.expr, fn, c:preset.c, color: nextColor(), on:true,
+    label: preset.label
+  });
+  renderLayerList(); render3d();
+}
+function removeLayer(id){
+  layers = layers.filter(l=>l.id!==id);
+  renderLayerList(); render3d();
+}
+function toggleLayer(id){
+  const l = layers.find(l=>l.id===id);
+  if(l){ l.on = !l.on; renderLayerList(); render3d(); }
+}
+function renderLayerList(){
+  const box = document.getElementById('layer-list');
+  box.innerHTML = '';
+  if(layers.length===0){
+    box.innerHTML = '<div class="empty-note">No layers yet &mdash; add a preset or custom surface below.</div>';
+    return;
+  }
+  layers.forEach(l=>{
+    const div = document.createElement('div');
+    div.className = 'layer' + (l.on ? '' : ' dim');
+    const hexColor = '#'+l.color.toString(16).padStart(6,'0');
+    let eqText, typeText;
+    if(l.kind==='preset'){
+      const sym = {x:'x',y:'y',z:'z',rho:'\u03c1',phi:'\u03c6',theta:'\u03b8',r:'r'}[l.key];
+      eqText = sym + ' = c (live)'; typeText = l.label;
+    } else {
+      eqText = l.expr + ' = ' + l.c;
+      typeText = 'custom isosurface';
+    }
+    div.innerHTML =
+      '<span class="layer-swatch" style="background:'+hexColor+'"></span>' +
+      '<div class="layer-info"><div class="layer-eq">'+eqText+'</div><div class="layer-type">'+typeText+'</div></div>' +
+      '<div class="layer-btns">' +
+        (l.kind==='custom' ? '<button title="edit c" onclick="editLayerC('+l.id+')">c</button>' : '') +
+        '<button title="toggle" onclick="toggleLayer('+l.id+')">'+(l.on?'&#8226;':'&#9711;')+'</button>' +
+        '<button title="remove" onclick="removeLayer('+l.id+')">&times;</button>' +
+      '</div>';
+    box.appendChild(div);
+  });
+}
+function editLayerC(id){
+  const l = layers.find(l=>l.id===id);
+  if(!l) return;
+  const nv = prompt('Isosurface value c for  '+l.expr+' = c', l.c);
+  if(nv===null) return;
+  const parsed = parseFloat(nv);
+  if(isNaN(parsed)) return;
+  l.c = parsed;
+  renderLayerList(); render3d();
+}
+populatePresetSelect();
+QUADRIC_PRESETS.forEach(p=>{
+  const btn = document.createElement('button');
+  btn.textContent = p.label;
+  btn.onclick = ()=>addQuadricPreset(p);
+  document.getElementById('quadric-presets').appendChild(btn);
+});
+
+/* ---------------- SNAPSHOTS (save/compare/export) ---------------- */
+let snapshots = [];
+function serializeScene(){
+  return {
+    system, az, el, camDist,
+    state: JSON.parse(JSON.stringify(state)),
+    layers: layers.map(l=> l.kind==='preset'
+      ? {kind:'preset', sys:l.sys, key:l.key, color:l.color, on:l.on, label:l.label}
+      : {kind:'custom', expr:l.expr, c:l.c, color:l.color, on:l.on, label:l.label}
+    )
+  };
+}
+function loadScene(snap){
+  system = snap.system;
+  Object.assign(state.cart, snap.state.cart);
+  Object.assign(state.cyl, snap.state.cyl);
+  Object.assign(state.sph, snap.state.sph);
+  az = snap.az; el = snap.el; camDist = snap.camDist;
+  layers = snap.layers.map(l=>{
+    if(l.kind==='preset') return {...l, id:layerCounter++};
+    const {fn} = tryCompile(l.expr);
+    return {...l, id:layerCounter++, fn};
+  });
+  updateCameraFromOrbit();
+  document.getElementById('btn-cart').classList.toggle('active', system==='cart');
+  document.getElementById('btn-cyl').classList.toggle('active', system==='cyl');
+  document.getElementById('btn-sph').classList.toggle('active', system==='sph');
+  buildControls(); renderLayerList(); render3d();
+}
+function saveSnapshot(){
+  const nameInput = document.getElementById('snap-name');
+  const name = nameInput.value.trim() || ('scene ' + (snapshots.length+1));
+  snapshots.push({ name, data: serializeScene() });
+  nameInput.value = '';
+  renderSnapshots();
+}
+function renderSnapshots(){
+  const box = document.getElementById('snap-list');
+  box.innerHTML = '';
+  snapshots.forEach((s, i)=>{
+    const div = document.createElement('div');
+    div.className = 'snap';
+    div.innerHTML =
+      '<span class="snap-name" onclick="loadScene(snapshots['+i+'].data)">'+s.name+'</span>' +
+      '<button onclick="deleteSnapshot('+i+')">&times;</button>';
+    box.appendChild(div);
+  });
+}
+function deleteSnapshot(i){ snapshots.splice(i,1); renderSnapshots(); }
+function exportJSON(){
+  const payload = { snapshots, current: serializeScene() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'coordinate-lab-scene.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importJSON(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const payload = JSON.parse(e.target.result);
+      if(payload.snapshots) { snapshots = payload.snapshots; renderSnapshots(); }
+      if(payload.current) loadScene(payload.current);
+    } catch(err){ alert('Could not read that file: ' + err.message); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+/* ---------------- unit vectors ---------------- */
+function toggleUnitVectors(v){ showUnitVectors = v; render3d(); }
+function drawUnitVectors(group){
+  // evaluate at the "active point" implied by current system state (first active coord combo),
+  // fallback to (1,1,1)-ish default so vectors are always visible.
+  const s = state[system];
+  let x,y,z;
+  if(system==='cart'){ x=s.x.on?s.x.v:1.2; y=s.y.on?s.y.v:1.2; z=s.z.on?s.z.v:1.2; }
+  else if(system==='cyl'){
+    const rho=s.rho.on?s.rho.v:1.4, phi=s.phi.on?s.phi.v:0.6, zz=s.z.on?s.z.v:1.1;
+    x=rho*Math.cos(phi); y=rho*Math.sin(phi); z=zz;
+  } else {
+    const r=s.r.on?s.r.v:1.6, th=s.theta.on?s.theta.v:1.0, ph=s.phi.on?s.phi.v:0.6;
+    x=r*Math.sin(th)*Math.cos(ph); y=r*Math.sin(th)*Math.sin(ph); z=r*Math.cos(th);
+  }
+  const origin = new THREE.Vector3(x,y,z);
+  pointMarker(group, x,y,z, 0xEF9F27, 0.045);
+  const L = 0.6;
+  if(system==='cart'){
+    vectorArrow(group, origin, new THREE.Vector3(L,0,0), colorFor('x'), 'x\u0302');
+    vectorArrow(group, origin, new THREE.Vector3(0,L,0), colorFor('y'), 'y\u0302');
+    vectorArrow(group, origin, new THREE.Vector3(0,0,L), colorFor('z'), 'z\u0302');
+  } else if(system==='cyl'){
+    const rho = Math.hypot(x,y), phi = Math.atan2(y,x);
+    const rhoHat = new THREE.Vector3(Math.cos(phi), Math.sin(phi), 0);
+    const phiHat = new THREE.Vector3(-Math.sin(phi), Math.cos(phi), 0);
+    const zHat = new THREE.Vector3(0,0,1);
+    vectorArrow(group, origin, rhoHat.clone().multiplyScalar(L), colorFor('rho'), '\u03c1\u0302');
+    vectorArrow(group, origin, phiHat.clone().multiplyScalar(L), colorFor('phi'), '\u03c6\u0302');
+    vectorArrow(group, origin, zHat.clone().multiplyScalar(L), colorFor('z'), 'z\u0302');
+  } else {
+    const r = Math.hypot(x,y,z);
+    const theta = Math.acos(z/(r||1)), phi = Math.atan2(y,x);
+    const rHat = new THREE.Vector3(Math.sin(theta)*Math.cos(phi), Math.sin(theta)*Math.sin(phi), Math.cos(theta));
+    const thetaHat = new THREE.Vector3(Math.cos(theta)*Math.cos(phi), Math.cos(theta)*Math.sin(phi), -Math.sin(theta));
+    const phiHat = new THREE.Vector3(-Math.sin(phi), Math.cos(phi), 0);
+    vectorArrow(group, origin, rHat.clone().multiplyScalar(L), colorFor('r'), 'r\u0302');
+    vectorArrow(group, origin, thetaHat.clone().multiplyScalar(L), colorFor('theta'), '\u03b8\u0302');
+    vectorArrow(group, origin, phiHat.clone().multiplyScalar(L), colorFor('phi'), '\u03c6\u0302');
+  }
+}
+
+/* ---------------- intersections ----------------
+   Every active surface (whether a checked preset slider or a custom
+   layer) is converted into an implicit function f(x,y,z) such that the
+   surface is f(x,y,z) = 0. We solve the system f_1=0, f_2=0, ... = 0
+   simultaneously with damped Gauss-Newton (finite-difference Jacobian)
+   and mark the resulting common point with a small yellow ball. A warm
+   start (previous solution) keeps the marker stable while dragging
+   sliders; a few fallback seeds are tried if that fails to converge.
+
+   Two sub-modes:
+   - 'point': a single ball at one solution of the simultaneous system
+     (original behaviour).
+   - 'curve': when exactly 2 surfaces are active, their intersection is
+     generically a curve (or several). We trace it by walking along the
+     1-D solution manifold of f_1=0, f_2=0 using a continuation method
+     (tangent-predict + Newton-correct), starting from several seeds so
+     multiple disjoint branches are found. When 3+ surfaces are active
+     (generically a point) or fewer than 2 surfaces are active, curve
+     mode falls back to drawing the point marker instead.
+*/
+function toggleIntersections(v){
+  showIntersections = v;
+  if(!v) lastIntersectionPoint = null;
+  const bar = document.getElementById('intersect-submode');
+  bar.classList.toggle('hidden', !v);
+  render3d();
+}
+function setIntersectionMode(mode){
+  intersectionMode = mode;
+  document.getElementById('submode-point').classList.toggle('active', mode==='point');
+  document.getElementById('submode-curve').classList.toggle('active', mode==='curve');
+  render3d();
+}
+let lastIntersectionPoint = null;
+
+function implicitForPreset(sys, key, v){
+  if(sys==='cart'){
+    if(key==='x') return { fn:(x,y,z)=>x-v, mask:null };
+    if(key==='y') return { fn:(x,y,z)=>y-v, mask:null };
+    return { fn:(x,y,z)=>z-v, mask:null };
+  }
+  if(sys==='cyl'){
+    if(key==='rho') return { fn:(x,y,z)=>Math.hypot(x,y)-v, mask:null };
+    if(key==='phi') return {
+      fn:(x,y,z)=> y*Math.cos(v) - x*Math.sin(v),
+      mask:(x,y,z)=> (x*Math.cos(v) + y*Math.sin(v)) >= -0.03
+    };
+    return { fn:(x,y,z)=>z-v, mask:null };
+  }
+  // sph
+  if(key==='r') return { fn:(x,y,z)=>Math.hypot(x,y,z)-v, mask:null };
+  if(key==='theta') return { fn:(x,y,z)=>{ const r=Math.hypot(x,y,z)||1e-9; return z - Math.cos(v)*r; }, mask:null };
+  return {
+    fn:(x,y,z)=> y*Math.cos(v) - x*Math.sin(v),
+    mask:(x,y,z)=> (x*Math.cos(v) + y*Math.sin(v)) >= -0.03
+  };
+}
+function getActiveElements(){
+  const els = [];
+  if(layers.length > 0){
+    layers.forEach(l=>{
+      if(!l.on) return;
+      if(l.kind==='preset'){
+        const st = state[l.sys][l.key];
+        const impl = implicitForPreset(l.sys, l.key, st.v);
+        els.push({ fn: impl.fn, mask: impl.mask, color: l.color });
+      } else {
+        els.push({ fn:(x,y,z)=> l.fn(x,y,z) - l.c, mask:null, color: l.color });
+      }
+    });
+  } else {
+    const s = state[system];
+    defs[system].forEach(([key])=>{
+      if(!s[key].on) return;
+      const impl = implicitForPreset(system, key, s[key].v);
+      els.push({ fn: impl.fn, mask: impl.mask, color: colorFor(key) });
+    });
+  }
+  return els;
+}
+function residualVector(els, p){
+  return els.map(e=>e.fn(p[0],p[1],p[2]));
+}
+function sumSq(v){ return v.reduce((a,b)=>a+b*b,0); }
+// Damped Gauss-Newton: minimizes sum of squares of all active f_i starting from `seed`.
+function gaussNewtonSolve(els, seed){
+  let p = seed.slice();
+  const h = 1e-4, lambda = 1e-3;
+  for(let iter=0; iter<40; iter++){
+    const r = residualVector(els, p);
+    // finite-difference Jacobian: rows = elements, cols = x,y,z
+    const J = els.map(e=>{
+      const dfx = (e.fn(p[0]+h,p[1],p[2]) - e.fn(p[0]-h,p[1],p[2])) / (2*h);
+      const dfy = (e.fn(p[0],p[1]+h,p[2]) - e.fn(p[0],p[1]-h,p[2])) / (2*h);
+      const dfz = (e.fn(p[0],p[1],p[2]+h) - e.fn(p[0],p[1],p[2]-h)) / (2*h);
+      return [dfx,dfy,dfz];
+    });
+    // normal equations A = J^T J + lambda*I, b = -J^T r
+    const A = [[lambda,0,0],[0,lambda,0],[0,0,lambda]];
+    const b = [0,0,0];
+    for(let k=0;k<J.length;k++){
+      const row = J[k];
+      for(let a=0;a<3;a++){
+        b[a] -= row[a]*r[k];
+        for(let bIdx=0;bIdx<3;bIdx++) A[a][bIdx] += row[a]*row[bIdx];
+      }
+    }
+    const delta = solve3x3(A, b);
+    if(!delta) break;
+    p = [p[0]+delta[0], p[1]+delta[1], p[2]+delta[2]];
+    // keep the search inside the visible domain
+    p[0] = Math.max(-4, Math.min(4, p[0]));
+    p[1] = Math.max(-4, Math.min(4, p[1]));
+    p[2] = Math.max(-4, Math.min(4, p[2]));
+    if(sumSq(delta) < 1e-14) break;
+  }
+  const finalResidual = sumSq(residualVector(els, p));
+  return { point:p, residual:finalResidual };
+}
+function solve3x3(A, b){
+  const det = A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])
+            - A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])
+            + A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+  if(Math.abs(det) < 1e-14) return null;
+  function detWithCol(col, vec){
+    const M = A.map(row=>row.slice());
+    for(let i=0;i<3;i++) M[i][col] = vec[i];
+    return M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])
+         - M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])
+         + M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+  }
+  return [detWithCol(0,b)/det, detWithCol(1,b)/det, detWithCol(2,b)/det];
+}
+function findIntersectionPoint(els){
+  const TOL = 1e-4;
+  const seeds = [];
+  if(lastIntersectionPoint) seeds.push(lastIntersectionPoint);
+  seeds.push([1,1,1],[1,-1,1],[-1,1,1],[1,1,-1],[-1,-1,1],[2,0,0.5],[0,2,0.5],[0.5,0.5,2],[0.1,0.1,0.1]);
+  let best = null;
+  for(const seed of seeds){
+    const res = gaussNewtonSolve(els, seed);
+    if(res.residual < TOL && els.every(e=> !e.mask || e.mask(res.point[0],res.point[1],res.point[2]))){
+      best = res;
+      break; // first converged, mask-respecting solution wins (keeps warm start stable)
+    }
+    if(!best || res.residual < best.residual) best = res;
+  }
+  if(best && best.residual < TOL) return best.point;
+  return null;
+}
+function drawIntersections(group){
+  const els = getActiveElements();
+  if(els.length < 2) return;
+  // curve mode only makes sense for exactly 2 active surfaces (a 1-D
+  // solution manifold). With 3+ it's generically a point, so we fall
+  // back to point mode automatically rather than showing nothing.
+  if(intersectionMode==='curve' && els.length===2){
+    drawIntersectionCurve(group, els);
+    return;
+  }
+  const point = findIntersectionPoint(els);
+  if(!point){ lastIntersectionPoint = null; return; }
+  lastIntersectionPoint = point;
+  pointMarker(group, point[0], point[1], point[2], 0xFFD500, 0.075);
+}
+
+/* -------- curve tracing for exactly-2-active-surfaces case --------
+   Given f(x,y,z)=0 and g(x,y,z)=0, the intersection is (generically) a
+   1-D curve. We find a handful of points on it via Gauss-Newton from
+   scattered seeds, then from each of those walk outward in both
+   directions along the curve using predictor-corrector continuation:
+   predict the next point by stepping along the tangent direction
+   t = ∇f × ∇g (the only direction orthogonal to both gradients), then
+   correct back onto the curve with a couple of Newton steps solving
+   the 2x2 system in the plane perpendicular to t. Distinct starting
+   points that converge to points already covered by an existing branch
+   are skipped, so multiple disjoint loops/branches all get traced. */
+function gradOf(fn, p){
+  const h = 1e-4;
+  return [
+    (fn(p[0]+h,p[1],p[2]) - fn(p[0]-h,p[1],p[2])) / (2*h),
+    (fn(p[0],p[1]+h,p[2]) - fn(p[0],p[1]-h,p[2])) / (2*h),
+    (fn(p[0],p[1],p[2]+h) - fn(p[0],p[1],p[2]-h)) / (2*h)
+  ];
+}
+function vecCross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+function vecLen(a){ return Math.hypot(a[0],a[1],a[2]); }
+function vecSub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+function vecAdd(a,b,s){ s=s===undefined?1:s; return [a[0]+b[0]*s,a[1]+b[1]*s,a[2]+b[2]*s]; }
+// Newton-correct a point p back onto {f=0, g=0} by solving the local
+// 2x2 least-squares problem using the gradients of f and g as the two
+// "row" directions (equivalent to a Gauss-Newton step restricted to
+// the plane spanned by ∇f, ∇g — the natural correction direction).
+function correctOntoCurve(f, g, p){
+  let q = p.slice();
+  for(let iter=0; iter<8; iter++){
+    const fv = f(q[0],q[1],q[2]), gv = g(q[0],q[1],q[2]);
+    if(Math.abs(fv) < 1e-7 && Math.abs(gv) < 1e-7) break;
+    const gf = gradOf(f,q), gg = gradOf(g,q);
+    // solve [gf; gg] * delta = [-fv; -gv] in least-squares sense (2 eqns, 3 unknowns):
+    // move delta = -(fv * gf / |gf|^2) - (correction along gg after removing gf component)
+    // simplest robust approach: 2x2 system in the (gf,gg) subspace basis.
+    const a11 = gf[0]*gf[0]+gf[1]*gf[1]+gf[2]*gf[2];
+    const a12 = gf[0]*gg[0]+gf[1]*gg[1]+gf[2]*gg[2];
+    const a22 = gg[0]*gg[0]+gg[1]*gg[1]+gg[2]*gg[2];
+    const det = a11*a22 - a12*a12;
+    if(Math.abs(det) < 1e-12) break;
+    const rhs1 = -fv, rhs2 = -gv;
+    const c1 = (rhs1*a22 - rhs2*a12) / det;
+    const c2 = (a11*rhs2 - a12*rhs1) / det;
+    q = [q[0]+c1*gf[0]+c2*gg[0], q[1]+c1*gf[1]+c2*gg[1], q[2]+c1*gf[2]+c2*gg[2]];
+  }
+  const fv = f(q[0],q[1],q[2]), gv = g(q[0],q[1],q[2]);
+  if(Math.abs(fv) > 1e-4 || Math.abs(gv) > 1e-4) return null;
+  return q;
+}
+function traceCurveBranch(f, g, startPoint, stepSize, maxSteps, boundR){
+  const fwd = [], bwd = [];
+  function walk(dirSign, out){
+    let p = startPoint.slice();
+    let prevTangent = null;
+    for(let i=0;i<maxSteps;i++){
+      const gf = gradOf(f,p), gg = gradOf(g,p);
+      let t = vecCross(gf,gg);
+      const tl = vecLen(t);
+      if(tl < 1e-8) break; // gradients (nearly) parallel: curve is singular here, stop branch
+      t = [t[0]/tl, t[1]/tl, t[2]/tl];
+      if(prevTangent && (t[0]*prevTangent[0]+t[1]*prevTangent[1]+t[2]*prevTangent[2]) < 0){
+        t = [-t[0],-t[1],-t[2]]; // keep tangent direction continuous along the walk
+      }
+      const predicted = vecAdd(p, t, dirSign*stepSize);
+      const corrected = correctOntoCurve(f, g, predicted);
+      if(!corrected) break;
+      if(vecLen(corrected) > boundR) { out.push(corrected); break; } // hit domain edge, stop but keep the boundary point
+      p = corrected;
+      prevTangent = t;
+      out.push(p);
+      // detect loop closure: if we've come back near the start after a few steps, stop
+      if(i > 6 && vecLen(vecSub(p, startPoint)) < stepSize*0.6) break;
+    }
+  }
+  walk(1, fwd);
+  walk(-1, bwd);
+  bwd.reverse();
+  return bwd.concat([startPoint], fwd);
+}
+function drawIntersectionCurve(group, els){
+  const f = els[0].fn, g = els[1].fn;
+  const maskOK = (p)=> (!els[0].mask || els[0].mask(p[0],p[1],p[2])) && (!els[1].mask || els[1].mask(p[0],p[1],p[2]));
+  const seeds = [
+    [1,1,1],[1,-1,1],[-1,1,1],[-1,-1,1],[1,1,-1],[1,-1,-1],[-1,1,-1],[-1,-1,-1],
+    [2,0,0.5],[0,2,0.5],[0.5,0.5,2],[0.1,0.1,0.1],[1.5,0,0],[0,1.5,0],[0,0,1.5],
+    [-2,0,0.5],[0,-2,0.5]
+  ];
+  const seedPoints = [];
+  for(const seed of seeds){
+    const found = correctOntoCurve(f, g, seed) || gaussNewtonSolveOnPair(f, g, seed);
+    if(found && maskOK(found)) seedPoints.push(found);
+  }
+  // de-duplicate seeds that converged to (roughly) the same branch start
+  const uniqueSeeds = [];
+  seedPoints.forEach(p=>{
+    if(!uniqueSeeds.some(u=> vecLen(vecSub(u,p)) < 0.25)) uniqueSeeds.push(p);
+  });
+  if(uniqueSeeds.length===0){
+    // no intersection found anywhere in the visible domain: nothing to draw
+    lastIntersectionPoint = null;
+    return;
+  }
+  const boundR = 3.4, stepSize = 0.12, maxSteps = 140;
+  const branches = [];
+  uniqueSeeds.forEach(seedPt=>{
+    // skip if this seed already lies on a branch we've traced
+    const already = branches.some(branch=> branch.some(p=> vecLen(vecSub(p,seedPt)) < stepSize*0.75));
+    if(already) return;
+    const branch = traceCurveBranch(f, g, seedPt, stepSize, maxSteps, boundR).filter(maskOK);
+    if(branch.length >= 2) branches.push(branch);
+  });
+  if(branches.length===0){ lastIntersectionPoint = null; return; }
+  // draw each branch as a colored polyline (blend of the two surface colors) plus small dots along it
+  const c1 = new THREE.Color(els[0].color), c2 = new THREE.Color(els[1].color);
+  const blended = c1.clone().lerp(c2, 0.5);
+  branches.forEach(branch=>{
+    const pts = branch.map(p=> new THREE.Vector3(p[0],p[1],p[2]));
+    curveLine(group, pts, blended.getHex());
+    for(let i=0;i<branch.length;i+=6){
+      pointMarker(group, branch[i][0], branch[i][1], branch[i][2], 0xFFD500, 0.028);
+    }
+  });
+  // keep a warm-start point for when the user flips back to point mode
+  lastIntersectionPoint = branches[0][Math.floor(branches[0].length/2)];
+}
+// tiny 2-equation Gauss-Newton fallback (used only if the direct
+// correctOntoCurve step fails to converge from a raw seed)
+function gaussNewtonSolveOnPair(f, g, seed){
+  const els = [{fn:f, mask:null},{fn:g, mask:null}];
+  const res = gaussNewtonSolve(els, seed);
+  return res.residual < 1e-4 ? res.point : null;
+}
+
+/* ---------------- scene init / camera drag / render loop ---------------- */
+function init3d() {
+  const wrap = document.getElementById('canvas-wrap');
+  const canvas = document.getElementById('c');
+  iScene = new THREE.Scene();
+  iCamera = new THREE.PerspectiveCamera(45, wrap.clientWidth/wrap.clientHeight, 0.1, 100);
+  iRenderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  iRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  iRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  axisLines(iScene, 3, 0x888780);
+  addAxisLabel(iScene, 'x', 3.25, 0, 0);
+  addAxisLabel(iScene, 'y', 0, 3.25, 0);
+  addAxisLabel(iScene, 'z', 0, 0, 3.25);
+  iGroup = new THREE.Group();
+  iScene.add(iGroup);
+  updateCameraFromOrbit();
+
+  let dragging=false, lastX=0, lastY=0;
+  canvas.style.cursor='grab';
+  canvas.addEventListener('pointerdown', e=>{dragging=true; lastX=e.clientX; lastY=e.clientY; canvas.style.cursor='grabbing';});
+  window.addEventListener('pointerup', ()=>{dragging=false; canvas.style.cursor='grab';});
+  window.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY;
+    lastX=e.clientX; lastY=e.clientY;
+    az -= dx*0.008; el += dy*0.008;
+    el = Math.max(-1.45, Math.min(1.45, el));
+    updateCameraFromOrbit();
+  });
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    camDist *= (1 + e.deltaY*0.001);
+    camDist = Math.max(2.2, Math.min(16, camDist));
+    updateCameraFromOrbit();
+  }, {passive:false});
+  window.addEventListener('resize', ()=>{
+    iCamera.aspect = wrap.clientWidth/wrap.clientHeight;
+    iCamera.updateProjectionMatrix();
+    iRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  });
+  animate();
+}
+function resetView(){ az=baseAz; el=baseEl; camDist=baseDist; updateCameraFromOrbit(); }
+function animate(){ requestAnimationFrame(animate); iRenderer.render(iScene, iCamera); }
+function clearGroup(){ while(iGroup.children.length) iGroup.remove(iGroup.children[0]); }
+
+function render3d(){
+  clearGroup();
+  const s = state[system];
+
+  // draw currently-checked sliders for the active system as a "live" surface too,
+  // so the Presets tab still gives instant feedback even with zero layers added.
+  if(layers.length===0){
+    if(system==='cart'){
+      if(s.x.on) buildPlane(iGroup,'x', s.x.v, colorFor('x'), 3);
+      if(s.y.on) buildPlane(iGroup,'y', s.y.v, colorFor('y'), 3);
+      if(s.z.on) buildPlane(iGroup,'z', s.z.v, colorFor('z'), 3);
+    } else if(system==='cyl'){
+      if(s.rho.on) buildCylinder(iGroup, s.rho.v, colorFor('rho'), 3);
+      if(s.phi.on){ buildHalfPlane(iGroup, s.phi.v, colorFor('phi'), 3, 3); drawPhiArc(iGroup, s.phi.v, colorFor('phi')); }
+      if(s.z.on) buildPlane(iGroup,'z', s.z.v, colorFor('z'), 3);
+    } else {
+      if(s.r.on) buildSphere(iGroup, s.r.v, colorFor('r'));
+      if(s.theta.on){ buildCone(iGroup, s.theta.v, colorFor('theta'), 3); drawThetaArc(iGroup, s.theta.v, s.phi.on?s.phi.v:0, colorFor('theta')); }
+      if(s.phi.on){ buildHalfPlane(iGroup, s.phi.v, colorFor('phi'), 3, 3); drawPhiArc(iGroup, s.phi.v, colorFor('phi')); }
+    }
+  } else {
+    layers.forEach(l=>{
+      if(!l.on) return;
+      if(l.kind==='preset'){
+        const st = state[l.sys][l.key];
+        if(l.sys==='cart'){
+          buildPlane(iGroup, l.key, st.v, l.color, 3, 0.3);
+        } else if(l.sys==='cyl'){
+          if(l.key==='rho') buildCylinder(iGroup, st.v, l.color, 3, 0.3);
+          else if(l.key==='phi'){ buildHalfPlane(iGroup, st.v, l.color, 3, 3, 0.3); drawPhiArc(iGroup, st.v, l.color); }
+          else buildPlane(iGroup,'z', st.v, l.color, 3, 0.3);
+        } else {
+          if(l.key==='r') buildSphere(iGroup, st.v, l.color, 0.28);
+          else if(l.key==='theta'){ buildCone(iGroup, st.v, l.color, 3, 0.3); drawThetaArc(iGroup, st.v, state.sph.phi.on?state.sph.phi.v:0, l.color); }
+          else { buildHalfPlane(iGroup, st.v, l.color, 3, 3, 0.3); drawPhiArc(iGroup, st.v, l.color); }
+        }
+      } else {
+        buildIsosurfaceMesh(iGroup, l.fn, l.c, l.color, 0.32, 20);
+      }
+    });
+  }
+
+  if(showIntersections) drawIntersections(iGroup);
+  if(showUnitVectors) drawUnitVectors(iGroup);
+
+  updateEqLine();
+  updateDiffPanel();
+}
+
+function updateEqLine(){
+  const s = state[system];
+  const symMap = {
+    cart: {x:'x', y:'y', z:'z'}, cyl: {rho:'\u03c1', phi:'\u03c6', z:'z'}, sph: {r:'r', theta:'\u03b8', phi:'\u03c6'}
+  }[system];
+  const eqInput = document.getElementById('eqinput');
+  if(!eqInput) return;
+  if(layers.length > 0){
+    const active = layers.filter(l=>l.on);
+    if(active.length===0){ eqInput.value = 'no layers active'; return; }
+    eqInput.value = active.map(l=> l.kind==='preset'
+      ? symMap[l.key] + (isAngle[l.key] ? (' = '+toDeg(state[l.sys][l.key].v).toFixed(0)+'\u00b0') : (' = '+state[l.sys][l.key].v.toFixed(2)))
+      : l.expr + ' = ' + l.c
+    ).join('  |  ');
+    return;
+  }
+  const active = defs[system].filter(([key])=>s[key].on);
+  if(active.length === 0){ eqInput.value = 'no coordinates selected'; return; }
+  const parts = active.map(([key])=>{
+    if(isAngle[key]) return symMap[key] + ' = ' + toDeg(s[key].v).toFixed(0) + '\u00b0';
+    return symMap[key] + ' = ' + s[key].v.toFixed(2);
+  });
+  eqInput.value = parts.join(',  ') + (active.length===2 ? '  \u2192  curve' : active.length===3 ? '  \u2192  point' : '');
+}
+
+function setSystem(sys){
+  system = sys;
+  document.getElementById('btn-cart').classList.toggle('active', sys==='cart');
+  document.getElementById('btn-cyl').classList.toggle('active', sys==='cyl');
+  document.getElementById('btn-sph').classList.toggle('active', sys==='sph');
+  buildControls(); render3d();
+}
+
+function buildControls(){
+  const el = document.getElementById('controls');
+  el.innerHTML = '';
+  defs[system].forEach(([key,label])=>{
+    const s = state[system][key];
+    const row = document.createElement('div');
+    row.className = 'row';
+    if(isAngle[key]){
+      const meta = sliderMeta[key];
+      const sliderVal = sliderFromTrueDeg(key, toDeg(s.v));
+      row.innerHTML =
+        '<input type="checkbox" ' + (s.on?'checked':'') + ' id="chk-'+key+'">' +
+        '<label for="chk-'+key+'">'+label+' = c<span class="badge">'+surfNames[key]+'</span></label>' +
+        '<input type="range" min="'+meta.min+'" max="'+meta.max+'" step="'+meta.step+'" value="'+sliderVal+'" id="rng-'+key+'">' +
+        '<input type="number" id="num-'+key+'" value="'+toDeg(s.v).toFixed(0)+'" step="1">' +
+        '<span class="unit">&deg;</span>';
+      el.appendChild(row);
+      const chk = document.getElementById('chk-'+key), rng = document.getElementById('rng-'+key), num = document.getElementById('num-'+key);
+      chk.addEventListener('change', e=>{ state[system][key].on = e.target.checked; render3d(); });
+      rng.addEventListener('input', e=>{
+        const sliderDeg = parseFloat(e.target.value);
+        const trueDeg = trueDegFromSlider(key, sliderDeg);
+        state[system][key].v = toRad(trueDeg);
+        num.value = trueDeg.toFixed(0);
+        render3d();
+      });
+      num.addEventListener('input', e=>{
+        let trueDeg = parseFloat(e.target.value);
+        if(isNaN(trueDeg)) return;
+        const lo = trueDegFromSlider(key, meta.min), hi = trueDegFromSlider(key, meta.max);
+        trueDeg = Math.max(lo, Math.min(hi, trueDeg));
+        state[system][key].v = toRad(trueDeg);
+        rng.value = sliderFromTrueDeg(key, trueDeg);
+        render3d();
+      });
+    } else {
+      const [min,max,step] = ranges[system][key];
+      row.innerHTML =
+        '<input type="checkbox" ' + (s.on?'checked':'') + ' id="chk-'+key+'">' +
+        '<label for="chk-'+key+'">'+label+' = c<span class="badge">'+surfNames[key]+'</span></label>' +
+        '<input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+s.v+'" id="rng-'+key+'">' +
+        '<input type="number" id="num-'+key+'" value="'+s.v.toFixed(2)+'" step="'+step+'">' +
+        '<span class="unit"></span>';
+      el.appendChild(row);
+      const chk = document.getElementById('chk-'+key), rng = document.getElementById('rng-'+key), num = document.getElementById('num-'+key);
+      chk.addEventListener('change', e=>{ state[system][key].on = e.target.checked; render3d(); });
+      rng.addEventListener('input', e=>{
+        const v = parseFloat(e.target.value);
+        state[system][key].v = v; num.value = v.toFixed(2); render3d();
+      });
+      num.addEventListener('input', e=>{
+        let v = parseFloat(e.target.value);
+        if(isNaN(v)) return;
+        v = Math.max(min, Math.min(max, v));
+        state[system][key].v = v; rng.value = v; render3d();
+      });
+    }
+  });
+}
+
+/* =====================================================================
+   PART 4 — differential length elements panel
+   ===================================================================== */
+function updateDiffPanel(){
+  const nameBox = document.getElementById('diff-sysname');
+  const exprBox = document.getElementById('diff-expr');
+  if(!nameBox) return;
+  const s = state[system];
+  if(system==='cart'){
+    nameBox.textContent = 'Cartesian';
+    exprBox.innerHTML =
+      '<span class="lbl">h\u2081 = h\u2082 = h\u2083 = 1</span><br>' +
+      'd\u2113 = <span class="val">dx&thinsp; x\u0302 + dy&thinsp; y\u0302 + dz&thinsp; z\u0302</span><br>' +
+      'dV = <span class="val">dx&thinsp;dy&thinsp;dz</span>';
+  } else if(system==='cyl'){
+    const rho = s.rho.v.toFixed(2);
+    nameBox.textContent = 'Cylindrical';
+    exprBox.innerHTML =
+      '<span class="lbl">h\u03c1 = 1,&nbsp; h\u03c6 = \u03c1,&nbsp; h_z = 1</span><br>' +
+      'd\u2113 = <span class="val">d\u03c1&thinsp; \u03c1\u0302 + \u03c1&thinsp;d\u03c6&thinsp; \u03c6\u0302 + dz&thinsp; z\u0302</span><br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;= d\u03c1&thinsp; \u03c1\u0302 + <span class="val">('+rho+')</span>d\u03c6&thinsp; \u03c6\u0302 + dz&thinsp; z\u0302<br>' +
+      'dV = <span class="val">\u03c1&thinsp;d\u03c1&thinsp;d\u03c6&thinsp;dz</span>';
+  } else {
+    const r = s.r.v.toFixed(2), th = toDeg(s.theta.v).toFixed(0);
+    const sinTh = Math.sin(s.theta.v).toFixed(3);
+    nameBox.textContent = 'Spherical';
+    exprBox.innerHTML =
+      '<span class="lbl">h_r = 1,&nbsp; h\u03b8 = r,&nbsp; h\u03c6 = r&thinsp;sin&thinsp;\u03b8</span><br>' +
+      'd\u2113 = <span class="val">dr&thinsp; r\u0302 + r&thinsp;d\u03b8&thinsp; \u03b8\u0302 + r&thinsp;sin\u03b8&thinsp;d\u03c6&thinsp; \u03c6\u0302</span><br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;= dr&thinsp; r\u0302 + <span class="val">('+r+')</span>d\u03b8&thinsp; \u03b8\u0302 + <span class="val">('+r+'&times;'+sinTh+')</span>d\u03c6&thinsp; \u03c6\u0302<br>' +
+      'dV = <span class="val">r&sup2;&thinsp;sin\u03b8&thinsp;dr&thinsp;d\u03b8&thinsp;d\u03c6</span>';
+  }
+}
+
+/* =====================================================================
+   PART 5 — vector calculus tab: gradient, divergence, curl
+   ===================================================================== */
+function getProbe(){
+  return [
+    parseFloat(document.getElementById('probe-x').value)||0,
+    parseFloat(document.getElementById('probe-y').value)||0,
+    parseFloat(document.getElementById('probe-z').value)||0
+  ];
+}
+function computeGradient(){
+  const input = document.getElementById('scalar-field');
+  const errBox = document.getElementById('scalar-field-err');
+  const {fn, err} = tryCompile(input.value.trim());
+  if(err){ input.classList.add('err'); errBox.textContent = 'Parse error: '+err; return; }
+  input.classList.remove('err'); errBox.textContent = '';
+  const [x,y,z] = getProbe();
+  const gx = numDeriv(fn,x,y,z,'x'), gy = numDeriv(fn,x,y,z,'y'), gz = numDeriv(fn,x,y,z,'z');
+  const mag = Math.hypot(gx,gy,gz);
+  const box = document.getElementById('calc-results');
+  box.innerHTML =
+    '<div class="calcbox" style="grid-column:1/-1">' +
+      '<div class="calcbox-title">&nabla;f at ('+x+', '+y+', '+z+')</div>' +
+      '<div class="expr">&nabla;f = <span class="val">('+gx.toFixed(3)+', '+gy.toFixed(3)+', '+gz.toFixed(3)+')</span><br>' +
+      '|&nabla;f| = <span class="val">'+mag.toFixed(3)+'</span> &nbsp;<span class="lbl">(direction of steepest ascent)</span></div>' +
+    '</div>';
+  drawCalcVector(x,y,z, [gx,gy,gz], VIOLET, '\u2207f');
+}
+function computeDivCurl(){
+  const pIn = document.getElementById('field-p'), qIn = document.getElementById('field-q'), rIn = document.getElementById('field-r');
+  const errBox = document.getElementById('vector-field-err');
+  [pIn,qIn,rIn].forEach(i=>i.classList.remove('err'));
+  errBox.textContent = '';
+  const P = tryCompile(pIn.value.trim()), Q = tryCompile(qIn.value.trim()), R = tryCompile(rIn.value.trim());
+  if(P.err){ pIn.classList.add('err'); errBox.textContent = 'P: '+P.err; return; }
+  if(Q.err){ qIn.classList.add('err'); errBox.textContent = 'Q: '+Q.err; return; }
+  if(R.err){ rIn.classList.add('err'); errBox.textContent = 'R: '+R.err; return; }
+  const [x,y,z] = getProbe();
+  const dPdx=numDeriv(P.fn,x,y,z,'x'), dPdy=numDeriv(P.fn,x,y,z,'y'), dPdz=numDeriv(P.fn,x,y,z,'z');
+  const dQdx=numDeriv(Q.fn,x,y,z,'x'), dQdy=numDeriv(Q.fn,x,y,z,'y'), dQdz=numDeriv(Q.fn,x,y,z,'z');
+  const dRdx=numDeriv(R.fn,x,y,z,'x'), dRdy=numDeriv(R.fn,x,y,z,'y'), dRdz=numDeriv(R.fn,x,y,z,'z');
+  const div = dPdx + dQdy + dRdz;
+  const curl = [ dRdy-dQdz, dPdz-dRdx, dQdx-dPdy ];
+  const Fval = [P.fn(x,y,z), Q.fn(x,y,z), R.fn(x,y,z)];
+  const box = document.getElementById('calc-results');
+  box.innerHTML =
+    '<div class="calcbox">' +
+      '<div class="calcbox-title">&nabla;&middot;F  (divergence)</div>' +
+      '<div class="expr"><span class="val">'+div.toFixed(3)+'</span><br><span class="lbl">'+(div>0.001?'net outflow (source)':div<-0.001?'net inflow (sink)':'divergence-free here')+'</span></div>' +
+    '</div>' +
+    '<div class="calcbox">' +
+      '<div class="calcbox-title">&nabla;&times;F  (curl)</div>' +
+      '<div class="expr">(<span class="val">'+curl[0].toFixed(3)+', '+curl[1].toFixed(3)+', '+curl[2].toFixed(3)+'</span>)<br><span class="lbl">'+(Math.hypot(...curl)>0.001?'local rotation present':'irrotational here')+'</span></div>' +
+    '</div>';
+  drawCalcVector(x,y,z, Fval, AMBER, 'F');
+  drawCalcVector(x,y,z, curl, PINK, '\u2207\u00d7F');
+}
+function drawCalcVector(x,y,z,vec,color,label){
+  clearGroup();
+  const s = state[system];
+  if(layers.length===0){
+    if(system==='cart'){
+      if(s.x.on) buildPlane(iGroup,'x', s.x.v, colorFor('x'), 3, 0.15);
+      if(s.y.on) buildPlane(iGroup,'y', s.y.v, colorFor('y'), 3, 0.15);
+      if(s.z.on) buildPlane(iGroup,'z', s.z.v, colorFor('z'), 3, 0.15);
+    }
+  } else {
+    layers.forEach(l=>{
+      if(!l.on) return;
+      if(l.kind==='custom') buildIsosurfaceMesh(iGroup, l.fn, l.c, l.color, 0.15, 18);
+    });
+  }
+  pointMarker(iGroup, x,y,z, 0xEF9F27, 0.05);
+  const scaled = new THREE.Vector3(...vec);
+  const mag = scaled.length();
+  if(mag > 1e-6) scaled.multiplyScalar(Math.min(1.2, 1.2/Math.max(mag,1)) );
+  vectorArrow(iGroup, new THREE.Vector3(x,y,z), scaled, color, label);
+  if(showIntersections) drawIntersections(iGroup);
+  if(showUnitVectors) drawUnitVectors(iGroup);
+}
+
+/* =====================================================================
+   PART 6 — tabs
+   ===================================================================== */
+function setTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='diff') updateDiffPanel();
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+init3d();
+buildControls();
+renderLayerList();
+renderSnapshots();
+render3d();
+</script>
+</body>
+</html>
