@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinate Surface Lab v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght=400;500;600;700&family=Inter:wght=400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0d12;
+    --surface: #121720;
+    --surface-card: #181f2b;
+    --border: #222d3d;
+    --border-focus: #364963;
+    --text: #f0f4f8;
+    --text-muted: #718296;
+    
+    --coord1: #3b82f6; /* Blue */
+    --coord2: #10b981; /* Green */
+    --coord3: #f97316; /* Orange/Coral */
+    --intersection: #facc15; /* Yellow */
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    margin-bottom: 24px;
+  }
+  header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .lab-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    flex: 1;
+  }
+
+  @media (max-width: 950px) {
+    .lab-layout { grid-template-columns: 1fr; }
+  }
+
+  /* Control Panel Styling */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: fit-content;
+  }
+
+  .sys-selector {
+    display: flex;
+    gap: 6px;
+    background: rgba(0,0,0,0.2);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .sys-selector button {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+  .sys-selector button.active {
+    background: var(--border-focus);
+    color: var(--text);
+  }
+
+  /* Custom Checkbox Option Row */
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    padding: 4px 6px;
+    background: rgba(250, 204, 21, 0.05);
+    border: 1px dashed rgba(250, 204, 21, 0.2);
+    border-radius: 6px;
+  }
+  .option-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--intersection);
+    cursor: pointer;
+  }
+
+  /* Coordinate Card Component */
+  .coord-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .coord-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .coord-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .coord-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: currentColor;
+    cursor: pointer;
+  }
+  .mode-switch {
+    display: flex;
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 2px;
+  }
+  .mode-switch button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .mode-switch button.active {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-row span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 32px;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--border-focus);
+  }
+  .slider-row .val-out {
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 50px;
+    text-align: right;
+    color: var(--text);
+  }
+
+  /* Canvas viewport container */
+  .viewport-container {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 550px;
+    height: 100%;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  canvas:active { cursor: grabbing; }
+
+  /* Overlay HUD elements */
+  .hud-readout {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .hud-controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+  }
+  .hud-btn {
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .hud-btn:hover { background: var(--border); }
+  .hud-btn.inactive {
+    color: var(--text-muted);
+    border-color: transparent;
+    background: rgba(18, 23, 32, 0.4);
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Coordinate Surface Lab v2</h1>
+  <p>Precise mathematical models of constant-coordinate surfaces, range transformations, and multidimensional intersection paths.</p>
+</header>
+
+<div class="lab-layout">
+  <!-- Controls Side -->
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    <div class="panel">
+      <div class="sys-selector">
+        <button id="btn-cart" class="active" onclick="switchSystem('cart')">Cartesian</button>
+        <button id="btn-cyl" onclick="switchSystem('cyl')">Cylindrical</button>
+        <button id="btn-sph" onclick="switchSystem('sph')">Spherical</button>
+      </div>
+
+      <!-- Option: Only show intersected parts tickbox -->
+      <div class="option-row">
+        <input type="checkbox" id="chk-only-intersections" onchange="toggleOnlyIntersectionsMode(this.checked)">
+        <label for="chk-only-intersections" style="cursor: pointer;">Show Only Intersected Parts</label>
+      </div>
+
+      <div id="coord-controls-container" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Dynamic coordinate parameters injected here -->
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot" style="background: var(--coord1)"></span> <span id="leg-1">Coord 1</span></div>
+      <div class="legend-item"><span class="dot" style="background: var(--coord2)"></span> <span id="leg-2">Coord 2</span></div>
+      <div class="legend-item"><span class="dot" style="background: var(--coord3)"></span> <span id="leg-3">Coord 3</span></div>
+    </div>
+  </div>
+
+  <!-- Viewport Side -->
+  <div class="viewport-container">
+    <canvas id="webgl-canvas"></canvas>
+    
+    <div class="hud-controls">
+      <button class="hud-btn" id="hud-btn-intersections" onclick="toggleIntersectionVisibility()">Intersections: ON</button>
+      <button class="hud-btn" id="hud-btn-eye" onclick="toggleSurfaceVisibility()">👁 Eye: All Const Surfaces</button>
+      <button class="hud-btn" onclick="resetViewportCamera()">Reset Camera</button>
+    </div>
+
+    <div class="hud-readout" id="hud-readout-panel">
+      <!-- Live mathematical telemetry output -->
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Structural Configuration Parameters
+const config = {
+  cart: [
+    { id: 'x', label: 'X Axis', color: 'var(--coord1)', colorHex: 0x3b82f6, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 },
+    { id: 'y', label: 'Y Axis', color: 'var(--coord2)', colorHex: 0x10b981, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 },
+    { id: 'z', label: 'Z Axis', color: 'var(--coord3)', colorHex: 0xf97316, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 }
+  ],
+  cyl: [
+    { id: 'rho', label: '\u03C1 (Radius)', color: 'var(--coord1)', colorHex: 0x3b82f6, min: 0.1, max: 4, step: 0.1, val: 2, mode: 'const', visible: true, minRange: 1, maxRange: 3 },
+    { id: 'phi', label: '\u03D5 (Azimuth)', color: 'var(--coord2)', colorHex: 0x10b981, min: 0, max: 360, step: 1, val: 45, mode: 'const', visible: true, minRange: 0, maxRange: 180 },
+    { id: 'z', label: 'Z Axis', color: 'var(--coord3)', colorHex: 0xf97316, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 }
+  ],
+  sph: [
+    { id: 'r', label: 'r (Radius)', color: 'var(--coord1)', colorHex: 0x3b82f6, min: 0.1, max: 4, step: 0.1, val: 2.5, mode: 'const', visible: true, minRange: 1, maxRange: 3 },
+    { id: 'theta', label: '\u03B8 (Polar)', color: 'var(--coord2)', colorHex: 0x10b981, min: 1, max: 179, step: 1, val: 45, mode: 'const', visible: true, minRange: 30, maxRange: 120 },
+    { id: 'phi', label: '\u03D5 (Azimuth)', color: 'var(--coord3)', colorHex: 0xf97316, min: 0, max: 360, step: 1, val: 60, mode: 'const', visible: true, minRange: 0, maxRange: 120 }
+  ]
+};
+
+let activeSystem = 'cart';
+let scene, camera, renderer, renderGroup, intersectionGroup, overlayGroup;
+
+// Global Visibility Flags
+let stateShowIntersections = true;
+let stateShowSurfaces = true;
+let stateOnlyIntersectionsMode = false;
+
+// Mouse Interaction Parameters
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
+let cameraSpherical = { radius: 12, theta: Math.PI / 3, phi: -Math.PI / 4 };
+
+function init() {
+  const container = document.querySelector('.viewport-container');
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0d12);
+
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+  camera.up.set(0, 0, 1); 
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  renderGroup = new THREE.Group();
+  intersectionGroup = new THREE.Group();
+  overlayGroup = new THREE.Group();
+  scene.add(renderGroup);
+  scene.add(intersectionGroup);
+  scene.add(overlayGroup);
+
+  buildEnvironmentBase();
+  setupInteraction(container);
+  
+  switchSystem('cart');
+  window.addEventListener('resize', onWindowResize);
+  
+  updateEyeButtonText();
+  animate();
+}
+
+function buildEnvironmentBase() {
+  const baseGrid = new THREE.GridHelper(10, 20, 0x1d2633, 0x131a24);
+  baseGrid.rotation.x = Math.PI / 2;
+  scene.add(baseGrid);
+
+  const createAxis = (dir, color) => {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), dir.multiplyScalar(5)]);
+    return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 }));
+  };
+  scene.add(createAxis(new THREE.Vector3(1,0,0), 0xef4444)); 
+  scene.add(createAxis(new THREE.Vector3(0,1,0), 0x22c55e)); 
+  scene.add(createAxis(new THREE.Vector3(0,0,1), 0x3b82f6)); 
+}
+
+function setupInteraction(target) {
+  const updateCamera = () => {
+    cameraSpherical.theta = Math.max(0.01, Math.min(Math.PI - 0.01, cameraSpherical.theta));
+    camera.position.x = cameraSpherical.radius * Math.sin(cameraSpherical.theta) * Math.cos(cameraSpherical.phi);
+    camera.position.y = cameraSpherical.radius * Math.sin(cameraSpherical.theta) * Math.sin(cameraSpherical.phi);
+    camera.position.z = cameraSpherical.radius * Math.cos(cameraSpherical.theta);
+    camera.lookAt(0, 0, 0);
+  };
+
+  target.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - previousMousePosition.x;
+    const deltaY = e.clientY - previousMousePosition.y;
+
+    cameraSpherical.phi -= deltaX * 0.007;
+    cameraSpherical.theta -= deltaY * 0.007;
+
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+    updateCamera();
+  });
+
+  window.addEventListener('mouseup', () => isDragging = false);
+
+  target.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    cameraSpherical.radius += e.deltaY * 0.01;
+    cameraSpherical.radius = Math.max(4, Math.min(30, cameraSpherical.radius));
+    updateCamera();
+  }, { passive: false });
+
+  window.resetViewportCamera = () => {
+    cameraSpherical = { radius: 12, theta: Math.PI / 3, phi: -Math.PI / 4 };
+    updateCamera();
+  };
+
+  updateCamera();
+}
+
+function onWindowResize() {
+  const container = document.querySelector('.viewport-container');
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function switchSystem(sys) {
+  activeSystem = sys;
+  document.querySelectorAll('.sys-selector button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn-${sys}`).classList.add('active');
+  
+  const systemData = config[sys];
+  document.getElementById('leg-1').innerText = systemData[0].label;
+  document.getElementById('leg-2').innerText = systemData[1].label;
+  document.getElementById('leg-3').innerText = systemData[2].label;
+
+  generateControlDOM();
+  recalculateSceneGeometry();
+}
+
+function generateControlDOM() {
+  const container = document.getElementById('coord-controls-container');
+  container.innerHTML = '';
+
+  config[activeSystem].forEach((param) => {
+    const card = document.createElement('div');
+    card.className = 'coord-card';
+    card.style.borderLeft = `4px solid ${param.color}`;
+
+    card.innerHTML = `
+      <div class="coord-header">
+        <label class="coord-label" style="color: ${param.color}">
+          <input type="checkbox" id="chk-vis-${param.id}" ${param.visible ? 'checked' : ''}>
+          ${param.label}
+        </label>
+        <div class="mode-switch">
+          <button id="mode-c-${param.id}" class="${param.mode === 'const' ? 'active' : ''}">Const</button>
+          <button id="mode-r-${param.id}" class="${param.mode === 'range' ? 'active' : ''}">Range</button>
+        </div>
+      </div>
+      <div class="coord-body" id="body-${param.id}"></div>
+    `;
+    container.appendChild(card);
+
+    card.querySelector(`#chk-vis-${param.id}`).addEventListener('change', (e) => {
+      param.visible = e.target.checked;
+      recalculateSceneGeometry();
+    });
+
+    card.querySelector(`#mode-c-${param.id}`).addEventListener('click', () => {
+      param.mode = 'const';
+      renderCardBody(param);
+      recalculateSceneGeometry();
+    });
+
+    card.querySelector(`#mode-r-${param.id}`).addEventListener('click', () => {
+      param.mode = 'range';
+      renderCardBody(param);
+      recalculateSceneGeometry();
+    });
+
+    renderCardBody(param);
+  });
+}
+
+function renderCardBody(param) {
+  const body = document.getElementById(`body-${param.id}`);
+  const parent = body.parentElement;
+  parent.querySelector(`#mode-c-${param.id}`).className = param.mode === 'const' ? 'active' : '';
+  parent.querySelector(`#mode-r-${param.id}`).className = param.mode === 'range' ? 'active' : '';
+
+  if (param.mode === 'const') {
+    body.innerHTML = `
+      <div class="slider-group">
+        <div class="slider-row">
+          <span>Val</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.val}" id="sld-${param.id}">
+          <div class="val-out" id="out-${param.id}">${param.val}</div>
+        </div>
+      </div>
+    `;
+    body.querySelector(`#sld-${param.id}`).addEventListener('input', (e) => {
+      param.val = parseFloat(e.target.value);
+      document.getElementById(`out-${param.id}`).innerText = param.val;
+      recalculateSceneGeometry();
+    });
+  } else {
+    body.innerHTML = `
+      <div class="slider-group">
+        <div class="slider-row">
+          <span>Min</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.minRange}" id="sld-min-${param.id}">
+          <div class="val-out" id="out-min-${param.id}">${param.minRange}</div>
+        </div>
+        <div class="slider-row">
+          <span>Max</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.maxRange}" id="sld-max-${param.id}">
+          <div class="val-out" id="out-max-${param.id}">${param.maxRange}</div>
+        </div>
+      </div>
+    `;
+    body.querySelector(`#sld-min-${param.id}`).addEventListener('input', (e) => {
+      param.minRange = Math.min(parseFloat(e.target.value), param.maxRange);
+      e.target.value = param.minRange;
+      document.getElementById(`out-min-${param.id}`).innerText = param.minRange;
+      recalculateSceneGeometry();
+    });
+    body.querySelector(`#sld-max-${param.id}`).addEventListener('input', (e) => {
+      param.maxRange = Math.max(parseFloat(e.target.value), param.minRange);
+      e.target.value = param.maxRange;
+      document.getElementById(`out-max-${param.id}`).innerText = param.maxRange;
+      recalculateSceneGeometry();
+    });
+  }
+}
+
+function toggleIntersectionVisibility() {
+  stateShowIntersections = !stateShowIntersections;
+  const btn = document.getElementById('hud-btn-intersections');
+  btn.innerText = `Intersections: ${stateShowIntersections ? 'ON' : 'OFF'}`;
+  if(!stateShowIntersections) btn.classList.add('inactive');
+  else btn.classList.remove('inactive');
+  
+  applyVisibilityStates();
+}
+
+function updateEyeButtonText() {
+  const btn = document.getElementById('hud-btn-eye');
+  if (stateOnlyIntersectionsMode) {
+    if (stateShowSurfaces) {
+      btn.innerText = '👁 Eye: Intersected Surfaces';
+      btn.classList.remove('inactive');
+    } else {
+      btn.innerText = '👁 Eye: Intersections Only';
+      btn.classList.add('inactive');
+    }
+  } else {
+    if (stateShowSurfaces) {
+      btn.innerText = '👁 Eye: All Const Surfaces';
+      btn.classList.remove('inactive');
+    } else {
+      btn.innerText = '👁 Eye: Surfaces Hidden';
+      btn.classList.add('inactive');
+    }
+  }
+}
+
+function toggleSurfaceVisibility() {
+  stateShowSurfaces = !stateShowSurfaces;
+  updateEyeButtonText();
+  applyVisibilityStates();
+}
+
+function toggleOnlyIntersectionsMode(isOnlyMode) {
+  stateOnlyIntersectionsMode = isOnlyMode;
+  if (stateOnlyIntersectionsMode) {
+    stateShowSurfaces = false; 
+  } else {
+    stateShowSurfaces = true;  
+  }
+  updateEyeButtonText();
+  applyVisibilityStates();
+}
+
+function applyVisibilityStates() {
+  renderGroup.visible = stateShowSurfaces;
+  overlayGroup.visible = stateShowSurfaces;
+  intersectionGroup.visible = stateShowIntersections;
+}
+
+/* =====================================================================
+   MATHEMATICAL GEOMETRY ENGINE
+   ===================================================================== */
+const surfaceMaterial = (hex) => new THREE.MeshBasicMaterial({
+  color: hex, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false
+});
+const wireframeMaterial = (hex) => new THREE.LineBasicMaterial({
+  color: hex, transparent: true, opacity: 0.6
+});
+
+function clearGroup(g) {
+  while(g.children.length > 0){ 
+    const obj = g.children[0]; 
+    g.remove(obj); 
+  }
+}
+
+function recalculateSceneGeometry() {
+  clearGroup(renderGroup);
+  clearGroup(intersectionGroup);
+  clearGroup(overlayGroup);
+
+  const sys = config[activeSystem];
+
+  if (activeSystem === 'cart') {
+    if (sys[0].visible) buildCartesianPlane('x', sys[0]);
+    if (sys[1].visible) buildCartesianPlane('y', sys[1]);
+    if (sys[2].visible) buildCartesianPlane('z', sys[2]);
+    buildCartesianIntersections(sys);
+
+  } else if (activeSystem === 'cyl') {
+    if (sys[0].visible) buildCylindricalRhoPlane(sys[0]);
+    if (sys[1].visible) buildCylindricalPhiPlane(sys[1]);
+    if (sys[2].visible) buildCartesianPlane('z', sys[2]);
+    buildCylindricalIntersections(sys);
+
+  } else if (activeSystem === 'sph') {
+    if (sys[0].visible) buildSphericalRPlane(sys[0]);
+    if (sys[1].visible) buildSphericalThetaPlane(sys[1]);
+    if (sys[2].visible) buildSphericalPhiPlane(sys[2]);
+    buildSphericalIntersections(sys);
+  }
+
+  applyVisibilityStates();
+  updateHUDReadout();
+}
+
+/* ----- MATHEMATICAL SURFACE GENERATION VECTORS ----- */
+function buildCartesianPlane(axis, param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const geo = new THREE.PlaneGeometry(8, 8, 4, 4);
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    
+    if (axis === 'x') {
+      mesh.rotation.y = Math.PI / 2; mesh.position.x = v;
+      wire.rotation.y = Math.PI / 2; wire.position.x = v;
+    } else if (axis === 'y') {
+      mesh.rotation.x = Math.PI / 2; mesh.position.y = v;
+      wire.rotation.x = Math.PI / 2; wire.position.y = v;
+    } else {
+      mesh.position.z = v; wire.position.z = v;
+    }
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildCylindricalRhoPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    if (v <= 0) return;
+    const geo = new THREE.CylinderGeometry(v, v, 8, 48, 1, true);
+    geo.rotateX(Math.PI / 2); 
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildCylindricalPhiPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const geo = new THREE.PlaneGeometry(4, 8, 1, 1);
+    geo.translate(2, 0, 0); 
+    
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    mesh.rotateZ(rad); mesh.rotateX(Math.PI / 2); 
+
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    wire.rotateZ(rad); wire.rotateX(Math.PI / 2);
+
+    renderGroup.add(mesh, wire);
+    drawAngleOverlayArc(rad, 1.8, 0, 'phi', param.colorHex);
+  });
+}
+
+function buildSphericalRPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    if (v <= 0) return;
+    const geo = new THREE.SphereGeometry(v, 40, 30);
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildSphericalThetaPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const points = [new THREE.Vector2(0.001, 0), new THREE.Vector2(4 * Math.sin(rad), 4 * Math.cos(rad))];
+    const geo = new THREE.LatheGeometry(points, 48);
+    geo.rotateX(Math.PI / 2); 
+
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+
+    const currentPhi = (config.sph[2].val) * Math.PI / 180;
+    drawAngleOverlayArc(rad, 2.2, currentPhi, 'theta', param.colorHex);
+  });
+}
+
+function buildSphericalPhiPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const geo = new THREE.PlaneGeometry(4, 8, 1, 1);
+    geo.translate(2, 0, 0);
+
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    mesh.rotateZ(rad); mesh.rotateX(Math.PI / 2);
+    
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    wire.rotateZ(rad); wire.rotateX(Math.PI / 2);
+
+    renderGroup.add(mesh, wire);
+    drawAngleOverlayArc(rad, 1.5, 0, 'phi', param.colorHex);
+  });
+}
+
+function drawAngleOverlayArc(targetRad, radius, offsetPhi, type, colorHex) {
+  const points = [];
+  const segments = 32;
+  if (type === 'phi') {
+    for (let i = 0; i <= segments; i++) {
+      const step = (i / segments) * targetRad;
+      points.push(new THREE.Vector3(radius * Math.cos(step), radius * Math.sin(step), 0.01));
+    }
+  } else if (type === 'theta') {
+    for (let i = 0; i <= segments; i++) {
+      const step = (i / segments) * targetRad;
+      points.push(new THREE.Vector3(
+        radius * Math.sin(step) * Math.cos(offsetPhi),
+        radius * Math.sin(step) * Math.sin(offsetPhi),
+        radius * Math.cos(step)
+      ));
+    }
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  overlayGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: colorHex })));
+}
+
+/* =====================================================================
+   RANGE-AWARE COLOR-MAPPED INTERSECTION COMPUTATION ENGINES
+   ==================================================================== */
+function drawLineCurve(points, colorHex = 0xfacc15) {
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const mat = new THREE.LineBasicMaterial({ color: colorHex });
+  intersectionGroup.add(new THREE.Line(geo, mat));
+}
+
+function drawPointMarker(pos, colorHex = 0xfacc15) {
+  const geo = new THREE.SphereGeometry(0.12, 16, 16);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colorHex }));
+  mesh.position.copy(pos);
+  intersectionGroup.add(mesh);
+}
+
+function getInterval(param, defaultMin = -4, defaultMax = 4, scale = 1) {
+  if (!param.visible) return [defaultMin * scale, defaultMax * scale];
+  if (param.mode === 'const') return [param.val * scale, param.val * scale];
+  return [param.minRange * scale, param.maxRange * scale];
+}
+
+function buildCartesianIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const [x1, x2] = getInterval(sys[0]);
+  const [y1, y2] = getInterval(sys[1]);
+  const [z1, z2] = getInterval(sys[2]);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const xSingle = (x1 === x2), ySingle = (y1 === y2), zSingle = (z1 === z2);
+
+  if (xSingle && ySingle && zSingle) {
+    drawPointMarker(new THREE.Vector3(x1, y1, z1), 0xfacc15);
+  } 
+  else if (xSingle && ySingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y1, z2)], c3);
+  } else if (xSingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y2, z1)], c2);
+  } else if (ySingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+  } 
+  else if (xSingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y2, z1)], c2);
+    drawLineCurve([new THREE.Vector3(x1, y2, z1), new THREE.Vector3(x1, y2, z2)], c3);
+    drawLineCurve([new THREE.Vector3(x1, y2, z2), new THREE.Vector3(x1, y1, z2)], c2);
+    drawLineCurve([new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x1, y1, z1)], c3);
+  } else if (ySingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x2, y1, z1), new THREE.Vector3(x2, y1, z2)], c3);
+    drawLineCurve([new THREE.Vector3(x2, y1, z2), new THREE.Vector3(x1, y1, z2)], c1);
+    drawLineCurve([new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x1, y1, z1)], c3);
+  } else if (zSingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x2, y1, z1), new THREE.Vector3(x2, y2, z1)], c2);
+    drawLineCurve([new THREE.Vector3(x2, y2, z1), new THREE.Vector3(x1, y2, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x1, y2, z1), new THREE.Vector3(x1, y1, z1)], c2);
+  } 
+  else { 
+    const c = [
+      new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1),
+      new THREE.Vector3(x2, y2, z1), new THREE.Vector3(x1, y2, z1),
+      new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x2, y1, z2),
+      new THREE.Vector3(x2, y2, z2), new THREE.Vector3(x1, y2, z2)
+    ];
+    drawLineCurve([c[0], c[1]], c1); drawLineCurve([c[1], c[2]], c2); drawLineCurve([c[2], c[3]], c1); drawLineCurve([c[3], c[0]], c2);
+    drawLineCurve([c[4], c[5]], c1); drawLineCurve([c[5], c[6]], c2); drawLineCurve([c[6], c[7]], c1); drawLineCurve([c[7], c[4]], c2);
+    drawLineCurve([c[0], c[4]], c3); drawLineCurve([c[1], c[5]], c3); drawLineCurve([c[2], c[6]], c3); drawLineCurve([c[3], c[7]], c3);
+  }
+}
+
+function drawCylArc(r, pStart, pEnd, z, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32;
+  for (let i = 0; i <= segs; i++) {
+    const a = pStart + (i / segs) * (pEnd - pStart);
+    pts.push(new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), z));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function buildCylindricalIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const degToRad = Math.PI / 180;
+  const [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [p1, p2] = getInterval(sys[1], 0, 360, degToRad);
+  const [z1, z2] = getInterval(sys[2], -4, 4);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const rSingle = (r1 === r2), pSingle = (p1 === p2), zSingle = (z1 === z2);
+
+  if (rSingle && pSingle && zSingle) {
+    drawPointMarker(new THREE.Vector3(r1 * Math.cos(p1), r1 * Math.sin(p1), z1), 0xfacc15);
+  }
+  else if (rSingle && pSingle) {
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c3);
+  } else if (rSingle && zSingle) {
+    drawCylArc(r1, p1, p2, z1, c2);
+  } else if (pSingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+  }
+  else if (rSingle) { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r1, p1, p2, z2, c2);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c3);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z1), new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z2)], c3);
+  } else if (pSingle) { 
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+    drawLineCurve([new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z2)], c3);
+    drawLineCurve([new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z2), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c1);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1)], c3);
+  } else if (zSingle) { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r2, p1, p2, z1, c2);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z1), new THREE.Vector3(r2*Math.cos(p2), r2*Math.sin(p2), z1)], c1);
+  }
+  else { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r1, p1, p2, z2, c2); drawCylArc(r2, p1, p2, z1, c2); drawCylArc(r2, p1, p2, z2, c2);
+    const rads = [r1, r2], angs = [p1, p2], zs = [z1, z2];
+    rads.forEach(r => { angs.forEach(a => drawLineCurve([new THREE.Vector3(r*Math.cos(a), r*Math.sin(a), z1), new THREE.Vector3(r*Math.cos(a), r*Math.sin(a), z2)], c3)) });
+    angs.forEach(a => { zs.forEach(z => drawLineCurve([new THREE.Vector3(r1*Math.cos(a), r1*Math.sin(a), z), new THREE.Vector3(r2*Math.cos(a), r2*Math.sin(a), z)], c1)) });
+  }
+}
+
+function drawSphPhiArc(r, theta, pStart, pEnd, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32, sinT = Math.sin(theta), cosT = Math.cos(theta);
+  for (let i = 0; i <= segs; i++) {
+    const p = pStart + (i / segs) * (pEnd - pStart);
+    pts.push(new THREE.Vector3(r * sinT * Math.cos(p), r * sinT * Math.sin(p), r * cosT));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function drawSphThetaArc(r, phi, tStart, tEnd, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32, cosP = Math.cos(phi), sinP = Math.sin(phi);
+  for (let i = 0; i <= segs; i++) {
+    const t = tStart + (i / segs) * (tEnd - tStart);
+    pts.push(new THREE.Vector3(r * Math.sin(t) * cosP, r * Math.sin(t) * sinP, r * Math.cos(t)));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function drawSphRadialLine(r1, r2, theta, phi, colorHex = 0xfacc15) {
+  const sinT = Math.sin(theta), cosT = Math.cos(theta), cosP = Math.cos(phi), sinP = Math.sin(phi);
+  drawLineCurve([
+    new THREE.Vector3(r1 * sinT * cosP, r1 * sinT * sinP, r1 * cosT),
+    new THREE.Vector3(r2 * sinT * cosP, r2 * sinT * sinP, r2 * cosT)
+  ], colorHex);
+}
+
+function buildSphericalIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const degToRad = Math.PI / 180;
+  const [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [t1, t2] = getInterval(sys[1], 0.01, 179.9, degToRad);
+  const [p1, p2] = getInterval(sys[2], 0, 360, degToRad);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const rSingle = (r1 === r2), tSingle = (t1 === t2), pSingle = (p1 === p2);
+
+  if (rSingle && tSingle && pSingle) {
+    drawPointMarker(new THREE.Vector3(r1*Math.sin(t1)*Math.cos(p1), r1*Math.sin(t1)*Math.sin(p1), r1*Math.cos(t1)), 0xfacc15);
+  }
+  else if (rSingle && tSingle) {
+    drawSphPhiArc(r1, t1, p1, p2, c3);
+  } else if (rSingle && pSingle) {
+    drawSphThetaArc(r1, p1, t1, t2, c2);
+  } else if (tSingle && pSingle) {
+    drawSphRadialLine(r1, r2, t1, p1, c1);
+  }
+  else if (rSingle) { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r1, t2, p1, p2, c3);
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r1, p2, t1, t2, c2);
+  } else if (tSingle) { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r2, t1, p1, p2, c3);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t1, p2, c1);
+  } else if (pSingle) { 
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r2, p1, t1, t2, c2);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t2, p1, c1);
+  }
+  else { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r1, t2, p1, p2, c3); drawSphPhiArc(r2, t1, p1, p2, c3); drawSphPhiArc(r2, t2, p1, p2, c3);
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r1, p2, t1, t2, c2); drawSphThetaArc(r2, p1, t1, t2, c2); drawSphThetaArc(r2, p2, t1, t2, c2);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t1, p2, c1); drawSphRadialLine(r1, r2, t2, p1, c1); drawSphRadialLine(r1, r2, t2, p2, c1);
+  }
+}
+
+/* ----- MATHEMATICAL HUD DISPLAY TELEMETRY ----- */
+function updateHUDReadout() {
+  const panel = document.getElementById('hud-readout-panel');
+  const sys = config[activeSystem];
+  let str = `<strong>System Mode: ${activeSystem.toUpperCase()}</strong>`;
+  
+  if (activeSystem === 'cart') {
+    str += `<div>Pos: [X: ${sys[0].val.toFixed(1)}, Y: ${sys[1].val.toFixed(1)}, Z: ${sys[2].val.toFixed(1)}]</div>`;
+    const rho = Math.sqrt(sys[0].val**2 + sys[1].val**2);
+    const sphR = Math.sqrt(sys[0].val**2 + sys[1].val**2 + sys[2].val**2);
+    str += `<div style="color:var(--text-muted)">Cyl equiv \u03C1: ${rho.toFixed(2)}m</div>`;
+    str += `<div style="color:var(--text-muted)">Sph equiv r: ${sphR.toFixed(2)}m</div>`;
+  } else if (activeSystem === 'cyl') {
+    const pRad = sys[1].val * Math.PI / 180;
+    const x = sys[0].val * Math.cos(pRad);
+    const y = sys[0].val * Math.sin(pRad);
+    str += `<div>Cyl: [\u03C1: ${sys[0].val.toFixed(1)}m, \u03D5: ${sys[1].val}\u00B0, Z: ${sys[2].val.toFixed(1)}m]</div>`;
+    str += `<div style="color:var(--text-muted)">Cartesian Equiv: [X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}]</div>`;
+  } else if (activeSystem === 'sph') {
+    const tRad = sys[1].val * Math.PI / 180;
+    const pRad = sys[2].val * Math.PI / 180;
+    const x = sys[0].val * Math.sin(tRad) * Math.cos(pRad);
+    const y = sys[0].val * Math.sin(tRad) * Math.sin(pRad);
+    const z = sys[0].val * Math.cos(tRad);
+    str += `<div>Sph: [r: ${sys[0].val.toFixed(1)}m, \u03B8: ${sys[1].val}\u00B0, \u03D5: ${sys[2].val}\u00B0]</div>`;
+    str += `<div style="color:var(--text-muted)">Cartesian Equiv: [X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}, Z: ${z.toFixed(2)}]</div>`;
+  }
+  panel.innerHTML = str;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>
