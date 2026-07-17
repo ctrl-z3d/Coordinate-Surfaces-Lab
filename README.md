@@ -1,39 +1,48 @@
 # Coordinate Surface Lab
 
-<p align="center">
-  <b>Interactive 3D visualization of coordinate surfaces for Electromagnetic Waves.</b>
-</p>
-
-<p align="center">
-  <img src="pictures/1.png" width="48%">
-  <img src="pictures/2.png" width="48%">
-</p>
-
-<p align="center">
-  <img src="pictures/3.png" width="48%">
-  <img src="pictures/4.png" width="48%">
-</p>
+> **Interactive 3D visualization of coordinate surfaces built with Three.js for EEE241 · Electromagnetic Waves and Fields.**
 
 ## Overview
 
-**Coordinate Surface Lab** is an interactive browser-based visualization tool built with **Three.js** that transforms mathematical coordinate systems into intuitive 3D experiences.
+Coordinate Surface Lab is a browser-based educational tool that transforms mathematical coordinate systems into interactive 3D visualizations. It enables students to explore and understand constant-coordinate surfaces in **Cartesian**, **Cylindrical**, and **Spherical** coordinate systems through real-time rendering.
 
-Developed for **EEE241: Electromagnetic Waves**, it helps students visualize and understand how constant-coordinate surfaces behave in **Cartesian**, **Cylindrical**, and **Spherical** coordinate systems.
+Developed as a learning aid for **EEE241 · Electromagnetic Waves and Fields**.
+
+---
+
+## Preview
+
+<p align="center">
+  <img src="./pictures/cartesian%20demo.png" width="48%" alt="Cartesian Coordinate System">
+  <img src="./pictures/cyl%20demo.png" width="48%" alt="Cylindrical Coordinate System">
+</p>
+
+<p align="center">
+  <img src="./pictures/spherical%20demo.png" width="60%" alt="Spherical Coordinate System">
+</p>
+
+---
 
 ## Features
 
-- Interactive 3D visualization
+- Interactive 3D coordinate visualization
 - Real-time rendering with Three.js
-- Cartesian, Cylindrical & Spherical coordinate systems
-- Smooth orbit controls
-- Educational tool for Electromagnetics
+- Cartesian coordinate system
+- Cylindrical coordinate system
+- Spherical coordinate system
+- Orbit controls for intuitive navigation
+- Educational tool for Electromagnetic Waves and Fields
 
-## Tech Stack
+---
+
+## Built With
 
 - Three.js
-- JavaScript
 - HTML5
+- JavaScript (ES6)
 - CSS3
+
+---
 
 ## Getting Started
 
@@ -42,10 +51,57 @@ git clone https://github.com/ctrl-z3d/Coordinate-Surfaces-Lab.git
 cd Coordinate-Surfaces-Lab
 ```
 
-Open `index.html` in your browser.
+Run a local web server:
+
+```bash
+python -m http.server
+```
+
+or
+
+```bash
+npx serve
+```
+
+Then open:
+
+```
+http://localhost:8000/v2.html
+```
+
+---
+
+## Educational Purpose
+
+This project was developed for **EEE241 · Electromagnetic Waves and Fields** to help students visualize orthogonal coordinate systems used throughout electromagnetics, making abstract mathematical concepts easier to understand through interactive 3D exploration.
+
+---
+
+## Repository Structure
+
+```
+Coordinate-Surface-Lab/
+│
+├── pictures/
+│   ├── cartesian demo.png
+│   ├── cyl demo.png
+│   └── spherical demo.png
+│
+├── v2.html
+├── README.md
+└── LICENSE
+```
+
+---
 
 ## Author
 
 **Rakin**
 
 GitHub: https://github.com/ctrl-z3d
+
+---
+
+## License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
