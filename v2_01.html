@@ -1,0 +1,2726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinate Surface Lab v2.01</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght=400;500;600;700&family=Inter:wght=400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0d12;
+    --surface: #121720;
+    --surface-card: #181f2b;
+    --border: #222d3d;
+    --border-focus: #364963;
+    --text: #f0f4f8;
+    --text-muted: #718296;
+    
+    --coord1: #3b82f6; /* Blue */
+    --coord2: #10b981; /* Green */
+    --coord3: #f97316; /* Orange/Coral */
+    --coord-theta: #ec4899; /* Pink */
+    --intersection: #facc15; /* Yellow */
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  header {
+    margin-bottom: 24px;
+  }
+  header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .lab-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    flex: 1;
+  }
+
+  @media (max-width: 950px) {
+    .lab-layout { grid-template-columns: 1fr; }
+  }
+
+  /* Control Panel Styling */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: fit-content;
+  }
+
+  .sys-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: rgba(0,0,0,0.2);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .sys-selector button {
+    flex: 1;
+    min-width: 70px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 8px 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+  .sys-selector button.active {
+    background: var(--border-focus);
+    color: var(--text);
+  }
+
+  /* Bottom-left HUD row: readout panel + live Area/Volume metrics card,
+     side by side as two overlay boxes in the viewport. */
+  .hud-bottom-row {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .metrics-card {
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .metrics-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .metrics-value {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--intersection);
+    line-height: 1.25;
+  }
+  .metrics-formula {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.3;
+    word-break: break-word;
+    max-width: 220px;
+  }
+
+  .eqn-mode-toggle-btn {
+    width: 100%;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    letter-spacing: 0.02em;
+  }
+  .eqn-mode-toggle-btn:hover {
+    border-color: var(--border-focus);
+    color: var(--text);
+  }
+  .eqn-mode-toggle-btn.on {
+    background: var(--intersection);
+    border-color: var(--intersection);
+    color: #1a1a1a;
+  }
+
+  /* Custom Checkbox Option Row */
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    padding: 6px 10px;
+    background: rgba(250, 204, 21, 0.05);
+    border: 1px dashed rgba(250, 204, 21, 0.2);
+    border-radius: 6px;
+  }
+  .option-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--intersection);
+    cursor: pointer;
+  }
+
+  /* Coordinate Card Component */
+  .coord-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .coord-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .coord-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .coord-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: currentColor;
+    cursor: pointer;
+  }
+  .mode-switch {
+    display: flex;
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 2px;
+  }
+  .mode-switch button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .mode-switch button.active {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-row span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 32px;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--border-focus);
+  }
+  .slider-row .val-out {
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 50px;
+    text-align: right;
+    color: var(--text);
+  }
+
+  /* Equation Input Styling */
+  .eqn-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .eqn-input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .eqn-input-label {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text);
+    width: 30px;
+  }
+  .eqn-textbox {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px;
+    outline: none;
+  }
+  .eqn-textbox:focus {
+    border-color: var(--border-focus);
+  }
+  .math-keyboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .math-key {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .math-key:hover {
+    background: var(--border-focus);
+  }
+  .math-key:active {
+    background: var(--intersection);
+    color: #1a1a1a;
+    transform: scale(0.96);
+  }
+  .eqn-key-btn {
+    font-weight: 600;
+    user-select: none;
+  }
+  .error-box {
+    color: #ef4444;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* Equation Mode: Free Variable Range Controls */
+  .eqn-var-ranges-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .eqn-var-ranges-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .var-range-empty {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 4px 0 2px;
+  }
+  .var-range-block {
+    background: rgba(0,0,0,0.22);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .var-range-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .var-range-symbol {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .var-range-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .var-range-tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--intersection);
+    background: rgba(250, 204, 21, 0.08);
+    border: 1px solid rgba(250, 204, 21, 0.25);
+    padding: 2px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .dual-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dual-slider-endlabel {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .dual-slider-track-wrap {
+    position: relative;
+    flex: 1;
+    height: 18px;
+  }
+  .dual-slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    height: 3px;
+    transform: translateY(-50%);
+    background: var(--border);
+    border-radius: 2px;
+  }
+  .dual-slider-fill {
+    position: absolute;
+    top: 50%;
+    height: 3px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+    opacity: 0.9;
+  }
+  .dual-range {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .dual-range::-webkit-slider-runnable-track { background: transparent; }
+  .dual-range::-moz-range-track { background: transparent; border: none; }
+  .dual-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 2px solid var(--bg);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border-focus);
+    margin-top: 2px;
+  }
+  .dual-range::-moz-range-thumb {
+    pointer-events: auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 2px solid var(--bg);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border-focus);
+  }
+  .range-readout-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+  }
+  .range-readout-arrow { color: var(--text-muted); }
+  .step-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+  }
+  .step-input {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 6px;
+    outline: none;
+    max-width: 100px;
+  }
+  .step-input:focus { border-color: var(--border-focus); }
+  .step-input:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(0,0,0,0.15);
+  }
+
+  #eqn-sys-selector { flex-wrap: wrap; }
+  #eqn-sys-selector button { flex: 1 1 auto; min-width: 76px; }
+
+  /* Canvas viewport container */
+  .viewport-container {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 550px;
+    height: 100%;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+  }
+  canvas:active { cursor: grabbing; }
+
+  /* Overlay HUD elements */
+  .hud-readout {
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .hud-controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .hud-row {
+    display: flex;
+    gap: 8px;
+  }
+  .hud-btn {
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .hud-btn:hover { background: var(--border); }
+  .hud-btn.inactive {
+    color: var(--text-muted);
+    border-color: transparent;
+    background: rgba(18, 23, 32, 0.4);
+  }
+  .hud-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Viewport Checkbox Wrapper Styling */
+  .hud-checkbox-card {
+    background: rgba(18, 23, 32, 0.85);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    backdrop-filter: blur(4px);
+  }
+  .hud-checkbox-card input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--coord1);
+    cursor: pointer;
+  }
+
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Coordinate Surface Lab v2.01</h1>
+  <p>EEE241: Electromagnetic Waves and Fields</p>
+</header>
+
+<div class="lab-layout">
+  <!-- Controls Side -->
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    <div class="panel">
+      <div class="sys-selector">
+        <button id="btn-cart" class="active" onclick="switchSystem('cart')">Cartesian</button>
+        <button id="btn-cyl" onclick="switchSystem('cyl')">Cylindrical</button>
+        <button id="btn-sph" onclick="switchSystem('sph')">Spherical</button>
+      </div>
+
+      <button id="btn-eqn-mode-toggle" class="eqn-mode-toggle-btn" onclick="toggleEqnMode()">Eqn Mode: OFF</button>
+
+      <!-- Option: within "Intersected Lines" View Mode, show the full
+           translucent constant-coordinate surfaces in addition to the
+           intersection lines, or just the lines by themselves. -->
+      <div class="option-row" id="row-const-surfaces">
+        <input type="checkbox" id="chk-const-surfaces" onchange="toggleConstSurfaces(this.checked)">
+        <label for="chk-const-surfaces" style="cursor: pointer;">Constant Coordinate Surfaces</label>
+      </div>
+
+      <div id="coord-controls-container" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Dynamic coordinate parameters injected here -->
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot" id="leg-dot-1" style="background: var(--coord1)"></span> <span id="leg-1">Coord 1</span></div>
+      <div class="legend-item"><span class="dot" id="leg-dot-2" style="background: var(--coord2)"></span> <span id="leg-2">Coord 2</span></div>
+      <div class="legend-item"><span class="dot" id="leg-dot-3" style="background: var(--coord3)"></span> <span id="leg-3">Coord 3</span></div>
+    </div>
+  </div>
+
+  <!-- Viewport Side -->
+  <div class="viewport-container">
+    <canvas id="webgl-canvas"></canvas>
+    
+    <div class="hud-controls">
+      <!-- Top Row: Interactive Toggles -->
+      <div class="hud-row">
+        <div class="hud-checkbox-card">
+          <input type="checkbox" id="chk-show-angles" onchange="toggleAngleVisibility(this.checked)">
+          <label for="chk-show-angles" style="cursor: pointer;">Show Angles</label>
+        </div>
+        <button class="hud-btn" id="hud-btn-intersections" onclick="toggleIntersectionVisibility()">Intersections: ON</button>
+        <button class="hud-btn" id="hud-btn-eye" onclick="toggleViewMode()">👁 View Mode: Intersected Lines</button>
+      </div>
+    </div>
+
+    <!-- Bottom-left HUD row: readout panel + live area/volume metrics,
+         side by side, both updating in real time together. -->
+    <div class="hud-bottom-row">
+      <div class="hud-readout" id="hud-readout-panel">
+        <!-- Live mathematical telemetry output -->
+      </div>
+      <div class="metrics-card" id="metrics-card">
+        <div class="metrics-label" id="metrics-label">Measure</div>
+        <div class="metrics-value" id="metrics-value">—</div>
+        <div class="metrics-formula" id="metrics-formula">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Structural Configuration Parameters
+const config = {
+  cart: [
+    { id: 'x', label: 'X Axis', color: 'var(--coord1)', colorHex: 0x3b82f6, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 },
+    { id: 'y', label: 'Y Axis', color: 'var(--coord2)', colorHex: 0x10b981, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 },
+    { id: 'z', label: 'Z Axis', color: 'var(--coord3)', colorHex: 0xf97316, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 }
+  ],
+  cyl: [
+    { id: 'rho', label: 'ρ (Radius)', color: 'var(--coord1)', colorHex: 0x3b82f6, min: 0, max: 4, step: 0.1, val: 2, mode: 'const', visible: true, minRange: 1, maxRange: 3 },
+    { id: 'phi', label: 'ϕ (Azimuth)', color: 'var(--coord2)', colorHex: 0x10b981, min: 0, max: 360, step: 1, val: 45, mode: 'const', visible: true, minRange: 0, maxRange: 180 },
+    { id: 'z', label: 'Z Axis', color: 'var(--coord3)', colorHex: 0xf97316, min: -4, max: 4, step: 0.1, val: 0, mode: 'const', visible: true, minRange: -2, maxRange: 2 }
+  ],
+  sph: [
+    { id: 'r', label: 'r (Radius)', color: 'var(--coord1)', colorHex: 0x3b82f6, min: 0, max: 4, step: 0.1, val: 2.5, mode: 'const', visible: true, minRange: 1, maxRange: 3 },
+    { id: 'theta', label: 'θ (Polar)', color: 'var(--coord-theta)', colorHex: 0xec4899, min: 1, max: 179, step: 1, val: 45, mode: 'const', visible: true, minRange: 30, maxRange: 120 },
+    { id: 'phi', label: 'ϕ (Azimuth)', color: 'var(--coord3)', colorHex: 0xf97316, min: 0, max: 360, step: 1, val: 60, mode: 'const', visible: true, minRange: 0, maxRange: 120 }
+  ],
+};
+
+const MAX_EQUATIONS = 5;
+const EQN_PALETTE = ['#3b82f6', '#10b981', '#f97316', '#facc15', '#ec4899'];
+
+// Calculator keypad definitions: tapping a key inserts `insert` at the
+// cursor in the focused equation textbox. `cursorBack` moves the cursor
+// back that many characters after insertion (e.g. landing inside parens).
+const MATH_KEYS = [
+  { label: 'sin(', insert: 'sin(', cursorBack: 0, title: 'Sine' },
+  { label: 'cos(', insert: 'cos(', cursorBack: 0, title: 'Cosine' },
+  { label: 'tan(', insert: 'tan(', cursorBack: 0, title: 'Tangent' },
+  { label: '√(',   insert: 'sqrt(', cursorBack: 0, title: 'Square root' },
+  { label: 'x²',   insert: '^2', cursorBack: 0, title: 'Square' },
+  { label: '^',    insert: '^', cursorBack: 0, title: 'Power' },
+  { label: 'π',    insert: 'pi', cursorBack: 0, title: 'Pi' },
+  { label: 'e',    insert: 'e', cursorBack: 0, title: "Euler's number" },
+  { label: '(',    insert: '(', cursorBack: 0, title: 'Open parenthesis' },
+  { label: ')',    insert: ')', cursorBack: 0, title: 'Close parenthesis' },
+  { label: '÷',    insert: '/', cursorBack: 0, title: 'Divide' },
+  { label: '×',    insert: '*', cursorBack: 0, title: 'Multiply' },
+  { label: '+',    insert: '+', cursorBack: 0, title: 'Add' },
+  { label: '−',    insert: '-', cursorBack: 0, title: 'Subtract' },
+  { label: '|x|',  insert: 'abs()', cursorBack: 1, title: 'Absolute value' },
+  { label: 'exp(', insert: 'exp(', cursorBack: 0, title: 'Exponential' }
+];
+
+// The default two "plot axes" per coordinate system, used when no
+// equation's LHS is recognized as one of the system's role variables.
+const SYS_PLOT_VARS = {
+  cart: ['x', 'y'],
+  cyl:  ['rho', 'phi'],
+  sph:  ['theta', 'phi']
+};
+
+// The full set of 3 coordinate-role variables per system. Whichever one is
+// solved for (the equation's LHS) is the computed OUTPUT and is removed
+// from the grid axes; the remaining two role vars become the plot axes.
+const SYS_ROLE_VARS = {
+  cart: ['x', 'y', 'z'],
+  cyl:  ['rho', 'phi', 'z'],
+  sph:  ['r', 'theta', 'phi']
+};
+
+// Determines the active plot axes (the grid variables) for the current
+// system, based on which role variable the first non-empty equation solves
+// for (LHS), AND which of the remaining role variables are actually
+// referenced in its RHS.
+//   - If the RHS references BOTH remaining role vars (e.g. z = sin(x)*cos(y)),
+//     both are plot axes -> a surface.
+//   - If the RHS references NEITHER remaining role var (e.g. rho = 2, a pure
+//     constant), the equation fixes one coordinate and leaves the other two
+//     completely free -- that's a constant-coordinate SURFACE (e.g. rho=2 is
+//     a cylinder), so both remaining vars are still plot axes.
+//   - Only when the RHS references exactly ONE of the remaining role vars
+//     (e.g. phi = 2*rho, which only depends on rho) does the other one
+//     collapse to a free/slider parameter instead of a 2nd grid axis,
+//     since the equation traces a curve, not a surface.
+function getActivePlotAxes() {
+  const eConf = eqnState[activeSystem];
+  const roleVars = SYS_ROLE_VARS[activeSystem];
+  const primary = eConf.equations.find(eq => eq.expression && eq.expression.trim());
+  if (primary) {
+    const { lhs, rhs } = splitEquation(primary.expression);
+    const lhsVar = lhs.trim();
+    if (roleVars.includes(lhsVar)) {
+      const rhsTokens = new Set((rhs.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || []));
+      const remaining = roleVars.filter(v => v !== lhsVar);
+      const usedAxes = remaining.filter(v => rhsTokens.has(v));
+      // A pure constant (no remaining role var referenced) still defines a
+      // full 2D surface spanning both remaining coordinates.
+      return usedAxes.length === 0 ? remaining : usedAxes;
+    }
+  }
+  return SYS_PLOT_VARS[activeSystem];
+}
+
+// Returns the "output" role variable (the one being solved for) for the
+// Returns the "output" role variable (the one being solved for) for the
+// current system, given the active plot axes -- i.e. whichever role var
+// isn't one of the two plot axes. Used as a fallback for bare expressions
+// with no "=" (no explicit LHS).
+function getOutputRoleVar(plotAxes) {
+  const roleVars = SYS_ROLE_VARS[activeSystem];
+  return roleVars.find(v => !plotAxes.includes(v));
+}
+
+// The true output role variable is whichever one the primary equation's
+// LHS names explicitly (e.g. "z" in "z = rho"); only equations with no "="
+// at all fall back to the first role var not in the implied plot axes.
+function getPrimaryOutputVar(impliedAxes) {
+  const eConf = eqnState[activeSystem];
+  const roleVars = SYS_ROLE_VARS[activeSystem];
+  const primary = eConf.equations.find(eq => eq.expression && eq.expression.trim());
+  if (primary) {
+    const lhsVar = splitEquation(primary.expression).lhs.trim();
+    if (roleVars.includes(lhsVar)) return lhsVar;
+  }
+  return getOutputRoleVar(impliedAxes);
+}
+
+// Combines the equation-implied plot axes (from getActivePlotAxes, based on
+// algebraic structure) with the user's per-variable Fixed/Range tickbox
+// choices. A variable the user has explicitly marked "Range" becomes a plot
+// axis (swept, contributing to a surface/curve) even if the equation didn't
+// strictly require it; a variable marked "Fixed" is held constant at its
+// slider value even if it's an implied axis. The equation's own output
+// variable is never swept as an input axis. Capped at 2 axes (a surface is
+// the highest-dimensional thing this tool draws).
+function getEffectivePlotAxes() {
+  const impliedAxes = getActivePlotAxes();
+  const outputVar = getPrimaryOutputVar(impliedAxes);
+  const eConf = eqnState[activeSystem];
+  const allVars = detectFreeVariables();
+
+  const result = [];
+  allVars.forEach(v => {
+    if (v === outputVar) return;
+    const rs = eConf.varRanges[v];
+    const impliedAxis = impliedAxes.includes(v);
+    // Default (no explicit override yet): follow the algebraic implication.
+    const wantsRange = rs && rs.fixed !== undefined ? !rs.fixed : impliedAxis;
+    if (wantsRange) result.push(v);
+  });
+
+  return result.slice(0, 2);
+}
+
+// Metadata for every variable symbol that can appear as a plot axis.
+// hardMin/hardMax are the physically valid domain bounds for that symbol
+// (e.g. an azimuth angle cannot exceed 360 degrees) -- user-entered min/max
+// values are clamped into this range.
+const VAR_META = {
+  x:     { symbol: 'x',   name: 'x (cartesian)',        isAngle: false, defaultMin: -4,  defaultMax: 4,   defaultStep: 0.2, hardMin: -1000,  hardMax: 1000 },
+  y:     { symbol: 'y',   name: 'y (cartesian)',        isAngle: false, defaultMin: -4,  defaultMax: 4,   defaultStep: 0.2, hardMin: -1000,  hardMax: 1000 },
+  rho:   { symbol: 'ρ',   name: 'rho (radius)',         isAngle: false, defaultMin: 0,   defaultMax: 4,   defaultStep: 0.1, hardMin: 0,      hardMax: 1000 },
+  phi:   { symbol: 'ϕ',   name: 'phi (azimuth, deg)',   isAngle: true,  defaultMin: 0,   defaultMax: 360, defaultStep: 5,   hardMin: 0,      hardMax: 360  },
+  theta: { symbol: 'θ',   name: 'theta (polar, deg)',   isAngle: true,  defaultMin: 1,   defaultMax: 179, defaultStep: 5,   hardMin: 0,      hardMax: 180  },
+  r:     { symbol: 'r',   name: 'r (radius)',           isAngle: false, defaultMin: 0,   defaultMax: 4,   defaultStep: 0.1, hardMin: 0,      hardMax: 1000 }
+};
+
+// Per-system Eqn Mode state: equations list + live free-variable ranges.
+// Free-variable ranges are populated dynamically as equations are parsed
+// and new variable names are discovered (auto slider generation).
+const eqnState = {
+  cart: { equations: [{ id: 1, expression: 'z = sin(x)*cos(y)', color: '#3b82f6', visible: true, errorMessage: '' }], varRanges: {} },
+  cyl:  { equations: [{ id: 1, expression: 'z = rho * 0.5',      color: '#3b82f6', visible: true, errorMessage: '' }], varRanges: {} },
+  sph:  { equations: [{ id: 1, expression: 'r = 1 + 0.3*sin(3*phi)', color: '#3b82f6', visible: true, errorMessage: '' }], varRanges: {} }
+};
+
+let activeSystem = 'cart';
+let eqnModeOn = false;
+let scene, camera, renderer, renderGroup, intersectionGroup, overlayGroup, fillGroup;
+let xAxisLabelSprite, yAxisLabelSprite;
+
+// Global Visibility Flags
+let stateShowIntersections = true;
+let stateShowAngles = false;
+// View Mode toggles between two mutually exclusive viewport looks:
+//  - 'const' ("Intersected Lines"): the intersection wireframes are shown
+//    (governed separately by stateShowIntersections), optionally joined by
+//    the full translucent constant-coordinate surface planes if the
+//    "Constant Coordinate Surfaces" checkbox is on.
+//  - 'fill' ("Fill Surface"): the solid filled region is shown instead.
+let stateViewMode = 'const'; // 'const' | 'fill'
+// Whether the translucent constant-coordinate surface planes are shown
+// while in 'const' View Mode. Off by default -- the default look is lines
+// only (just the intersection wireframes).
+let stateShowConstSurfaces = false;
+
+// Mouse Interaction Parameters
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
+let cameraSpherical = { radius: 12, theta: Math.PI / 3, phi: -Math.PI / 4 };
+
+function init() {
+  const container = document.querySelector('.viewport-container');
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0d12);
+
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+  camera.up.set(0, 0, 1); 
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+
+  renderGroup = new THREE.Group();
+  intersectionGroup = new THREE.Group();
+  overlayGroup = new THREE.Group();
+  fillGroup = new THREE.Group();
+  scene.add(renderGroup);
+  scene.add(intersectionGroup);
+  scene.add(overlayGroup);
+  scene.add(fillGroup);
+
+  buildEnvironmentBase();
+  setupInteraction(container);
+  
+  switchSystem('cart');
+  window.addEventListener('resize', onWindowResize);
+  
+  updateViewModeButtonText();
+  animate();
+}
+
+function createTextCanvas(text, colorStr) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = colorStr;
+  ctx.font = 'Bold 32px "JetBrains Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 10, 32);
+  return canvas;
+}
+
+function buildEnvironmentBase() {
+  const baseGrid = new THREE.GridHelper(10, 20, 0x1d2633, 0x131a24);
+  baseGrid.rotation.x = Math.PI / 2;
+  scene.add(baseGrid);
+
+  const createAxis = (dir, color) => {
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), dir.multiplyScalar(5)]);
+    return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.5 }));
+  };
+  scene.add(createAxis(new THREE.Vector3(1,0,0), 0xef4444)); 
+  scene.add(createAxis(new THREE.Vector3(0,1,0), 0x22c55e)); 
+  scene.add(createAxis(new THREE.Vector3(0,0,1), 0x3b82f6));
+
+  const xTex = new THREE.CanvasTexture(createTextCanvas('X', '#ef4444'));
+  const xMat = new THREE.SpriteMaterial({ map: xTex });
+  const xSprite = new THREE.Sprite(xMat);
+  xSprite.position.set(5.3, 0, 0);
+  xSprite.scale.set(0.8, 0.4, 1);
+  scene.add(xSprite);
+
+  const yTex = new THREE.CanvasTexture(createTextCanvas('Y', '#22c55e'));
+  const yMat = new THREE.SpriteMaterial({ map: yTex });
+  const ySprite = new THREE.Sprite(yMat);
+  ySprite.position.set(0, 5.3, 0);
+  ySprite.scale.set(0.8, 0.4, 1);
+  scene.add(ySprite);
+
+  // X/Y labels are only meaningful in Cartesian mode -- Cylindrical and
+  // Spherical use rho/phi/theta instead, so keep references to hide them
+  // when the active system isn't Cartesian.
+  xAxisLabelSprite = xSprite;
+  yAxisLabelSprite = ySprite;
+
+  const zTex = new THREE.CanvasTexture(createTextCanvas('Z', '#3b82f6'));
+  const zMat = new THREE.SpriteMaterial({ map: zTex });
+  const zSprite = new THREE.Sprite(zMat);
+  zSprite.position.set(0, 0, 5.3);
+  zSprite.scale.set(0.8, 0.4, 1);
+  scene.add(zSprite);
+}
+
+function setupInteraction(target) {
+  const updateCamera = () => {
+    cameraSpherical.theta = Math.max(0.01, Math.min(Math.PI - 0.01, cameraSpherical.theta));
+    camera.position.x = cameraSpherical.radius * Math.sin(cameraSpherical.theta) * Math.cos(cameraSpherical.phi);
+    camera.position.y = cameraSpherical.radius * Math.sin(cameraSpherical.theta) * Math.sin(cameraSpherical.phi);
+    camera.position.z = cameraSpherical.radius * Math.cos(cameraSpherical.theta);
+    camera.lookAt(0, 0, 0);
+  };
+
+  target.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - previousMousePosition.x;
+    const deltaY = e.clientY - previousMousePosition.y;
+
+    cameraSpherical.phi -= deltaX * 0.007;
+    cameraSpherical.theta -= deltaY * 0.007;
+
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+    updateCamera();
+  });
+
+  window.addEventListener('mouseup', () => isDragging = false);
+
+  target.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    cameraSpherical.radius += e.deltaY * 0.01;
+    cameraSpherical.radius = Math.max(4, Math.min(30, cameraSpherical.radius));
+    updateCamera();
+  }, { passive: false });
+
+  window.resetViewportCamera = () => {
+    cameraSpherical = { radius: 12, theta: Math.PI / 3, phi: -Math.PI / 4 };
+    updateCamera();
+  };
+
+  updateCamera();
+}
+
+function onWindowResize() {
+  const container = document.querySelector('.viewport-container');
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function switchSystem(sys) {
+  activeSystem = sys;
+  document.querySelectorAll('.sys-selector button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`btn-${sys}`).classList.add('active');
+
+  // X/Y axis labels only make sense in Cartesian mode -- Cylindrical uses
+  // rho/phi/z and Spherical uses r/theta/phi, so hide the X/Y sprites for
+  // any non-Cartesian system.
+  if (xAxisLabelSprite) xAxisLabelSprite.visible = (sys === 'cart');
+  if (yAxisLabelSprite) yAxisLabelSprite.visible = (sys === 'cart');
+
+  updateLegend();
+  generateControlDOM();
+  recalculateSceneGeometry();
+}
+
+function updateLegend() {
+  if (!eqnModeOn) {
+    const systemData = config[activeSystem];
+    document.getElementById('leg-1').innerText = systemData[0].label;
+    document.getElementById('leg-2').innerText = systemData[1].label;
+    document.getElementById('leg-3').innerText = systemData[2].label;
+    document.getElementById('leg-dot-1').style.background = systemData[0].color;
+    document.getElementById('leg-dot-2').style.background = systemData[1].color;
+    document.getElementById('leg-dot-3').style.background = systemData[2].color;
+  } else {
+    document.getElementById('leg-1').innerText = 'Write your own equation';
+    document.getElementById('leg-2').innerText = 'Up to 5 equations';
+    document.getElementById('leg-3').innerText = 'Toggle to show/hide';
+    document.getElementById('leg-dot-1').style.background = 'var(--coord1)';
+    document.getElementById('leg-dot-2').style.background = 'var(--coord2)';
+    document.getElementById('leg-dot-3').style.background = 'var(--coord3)';
+  }
+}
+
+function toggleEqnMode() {
+  eqnModeOn = !eqnModeOn;
+  const btn = document.getElementById('btn-eqn-mode-toggle');
+  btn.innerText = `Eqn Mode: ${eqnModeOn ? 'ON' : 'OFF'}`;
+  btn.classList.toggle('on', eqnModeOn);
+
+  // Fill Surface has no meaning for a custom equation graph (there's no
+  // bounded 3-axis region to fill, just a plotted function), so lock View
+  // Mode to Intersected Lines and disable the button while Eqn Mode is on.
+  // Equation-graph meshes also don't produce separate intersection-line
+  // geometry the way the const-coordinate builders do, so the "Constant
+  // Coordinate Surfaces" checkbox needs to be forced on (and hidden) here
+  // too, or nothing would render at all.
+  const viewBtn = document.getElementById('hud-btn-eye');
+  const csRow = document.getElementById('row-const-surfaces');
+  const csChk = document.getElementById('chk-const-surfaces');
+  if (eqnModeOn) {
+    stateViewMode = 'const';
+    stateShowConstSurfaces = true;
+    csChk.checked = true;
+    csRow.style.display = 'none';
+    viewBtn.disabled = true;
+  } else {
+    // Restore the lines-only default when leaving Eqn Mode.
+    stateShowConstSurfaces = false;
+    csChk.checked = false;
+    csRow.style.display = '';
+    viewBtn.disabled = false;
+  }
+  updateViewModeButtonText();
+
+  updateLegend();
+  generateControlDOM();
+  recalculateSceneGeometry();
+}
+
+function generateControlDOM() {
+  const container = document.getElementById('coord-controls-container');
+  container.innerHTML = '';
+
+  if (!eqnModeOn) {
+    config[activeSystem].forEach((param) => {
+      const card = document.createElement('div');
+      card.className = 'coord-card';
+      card.style.borderLeft = `4px solid ${param.color}`;
+
+      card.innerHTML = `
+        <div class="coord-header">
+          <label class="coord-label" style="color: ${param.color}">
+            <input type="checkbox" id="chk-vis-${param.id}" ${param.visible ? 'checked' : ''}>
+            ${param.label}
+          </label>
+          <div class="mode-switch">
+            <button id="mode-c-${param.id}" class="${param.mode === 'const' ? 'active' : ''}">Const</button>
+            <button id="mode-r-${param.id}" class="${param.mode === 'range' ? 'active' : ''}">Range</button>
+          </div>
+        </div>
+        <div class="coord-body" id="body-${param.id}"></div>
+      `;
+      container.appendChild(card);
+
+      card.querySelector(`#chk-vis-${param.id}`).addEventListener('change', (e) => {
+        param.visible = e.target.checked;
+        recalculateSceneGeometry();
+      });
+
+      card.querySelector(`#mode-c-${param.id}`).addEventListener('click', () => {
+        param.mode = 'const';
+        renderCardBody(param);
+        recalculateSceneGeometry();
+      });
+
+      card.querySelector(`#mode-r-${param.id}`).addEventListener('click', () => {
+        param.mode = 'range';
+        renderCardBody(param);
+        recalculateSceneGeometry();
+      });
+
+      renderCardBody(param);
+    });
+  } else {
+    // Generate Equation Mode Controls for the CURRENTLY active coordinate
+    // system (Cartesian / Cylindrical / Spherical). Up to MAX_EQUATIONS
+    // user-written equations, individually toggleable. Free variables used
+    // in the equations get auto-detected and given live sliders below.
+    const eConf = eqnState[activeSystem];
+    const plotVars = getActivePlotAxes();
+
+    const listCard = document.createElement('div');
+    listCard.className = 'coord-card';
+    listCard.style.borderLeft = `4px solid var(--coord1)`;
+
+    const exampleHint = activeSystem === 'cart' ? 'e.g. z = x+y or sin(x)*cos(y)'
+      : activeSystem === 'cyl' ? 'e.g. z = rho*0.5 or rho = 1+3*phi'
+      : 'e.g. r = 1+0.3*sin(3*phi)';
+
+    listCard.innerHTML = `
+      <div class="coord-header">
+        <span class="coord-label" style="color: var(--coord1)">Equations (write your own, ${exampleHint})</span>
+        <button class="hud-btn" id="eqn-add-btn" style="padding:4px 10px;">+ Add</button>
+      </div>
+      <div id="eqn-list-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+    `;
+    container.appendChild(listCard);
+
+    const addBtn = listCard.querySelector('#eqn-add-btn');
+    addBtn.addEventListener('click', () => {
+      if (eConf.equations.length >= MAX_EQUATIONS) return;
+      const usedColors = eConf.equations.map(e => e.color);
+      const nextColor = EQN_PALETTE.find(c => !usedColors.includes(c)) || EQN_PALETTE[eConf.equations.length % EQN_PALETTE.length];
+      const nextId = (eConf.equations.reduce((m, e) => Math.max(m, e.id), 0)) + 1;
+      eConf.equations.push({ id: nextId, expression: '', color: nextColor, visible: true, errorMessage: '' });
+      renderEquationList();
+      recalculateSceneGeometry();
+    });
+
+    renderEquationList();
+
+    // Free-variable domain card: sliders are generated dynamically based
+    // on which variables actually appear in the current equations.
+    const rangeCard = document.createElement('div');
+    rangeCard.className = 'coord-card';
+    rangeCard.style.borderLeft = `4px solid var(--border-focus)`;
+    rangeCard.innerHTML = `
+      <div class="coord-header">
+        <span class="coord-label" style="color: var(--text)">Free Variables</span>
+      </div>
+      <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin: -6px 0 4px 0;">
+        Tap "Range" to sweep a variable as a surface axis (max 2 swept at once).
+      </div>
+      <div class="eqn-var-ranges-wrap" style="border-top:none; padding-top:0; margin-top:0;">
+        <div id="eqn-var-ranges-container"></div>
+      </div>
+    `;
+    container.appendChild(rangeCard);
+
+    renderVarRangeBlocks();
+  }
+}
+
+function renderEquationList() {
+  const listContainer = document.getElementById('eqn-list-container');
+  const addBtn = document.getElementById('eqn-add-btn');
+  if (!listContainer) return;
+  const eConf = eqnState[activeSystem];
+  const plotVars = getActivePlotAxes();
+  const placeholderHint = plotVars.join(', ');
+
+  if (addBtn) addBtn.disabled = eConf.equations.length >= MAX_EQUATIONS;
+  if (addBtn) addBtn.style.opacity = eConf.equations.length >= MAX_EQUATIONS ? '0.4' : '1';
+
+  listContainer.innerHTML = eConf.equations.map(eq => `
+    <div class="eqn-input-container" data-eqn-id="${eq.id}" style="background: rgba(0,0,0,0.15); border-radius:8px; padding:10px; border-left:3px solid ${eq.color};">
+      <div class="eqn-input-row">
+        <label class="coord-label" style="cursor:pointer;">
+          <input type="checkbox" class="eqn-vis-toggle" data-id="${eq.id}" ${eq.visible ? 'checked' : ''}>
+        </label>
+        <input type="text" class="eqn-textbox eqn-expr-input" data-id="${eq.id}" value="${eq.expression}" placeholder="uses ${placeholderHint} e.g. sin(${plotVars[0]})*cos(${plotVars[1]})" style="flex:1;">
+        ${eConf.equations.length > 1 ? `<button class="math-key eqn-remove-btn" data-id="${eq.id}" title="Remove" style="flex:0 0 auto; color:#ef4444;">✕</button>` : ''}
+      </div>
+      <div class="math-keyboard" data-id="${eq.id}">
+        ${MATH_KEYS.map(k => `<button type="button" class="math-key eqn-key-btn" data-id="${eq.id}" data-insert="${k.insert}" data-cursor-back="${k.cursorBack || 0}" title="${k.title}">${k.label}</button>`).join('')}
+      </div>
+      <div class="error-box eqn-error-box" data-id="${eq.id}">${eq.errorMessage}</div>
+    </div>
+  `).join('');
+
+  listContainer.querySelectorAll('.eqn-vis-toggle').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = parseInt(e.target.dataset.id, 10);
+      const eq = eConf.equations.find(x => x.id === id);
+      if (eq) eq.visible = e.target.checked;
+      recalculateSceneGeometry();
+    });
+  });
+
+  listContainer.querySelectorAll('.eqn-expr-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const id = parseInt(e.target.dataset.id, 10);
+      const eq = eConf.equations.find(x => x.id === id);
+      if (eq) eq.expression = e.target.value;
+      // Re-detect free variables live as the user types, and refresh the
+      // slider blocks in place (without rebuilding the whole panel).
+      renderVarRangeBlocks();
+      recalculateSceneGeometry();
+    });
+  });
+
+  // Calculator-style math keypad: tapping a key inserts its text at the
+  // current cursor position of that equation's textbox (like a real 3D
+  // graphing calculator keypad), then refocuses the textbox so users can
+  // keep typing or tapping keys in sequence.
+  listContainer.querySelectorAll('.eqn-key-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = parseInt(e.target.dataset.id, 10);
+      const input = listContainer.querySelector(`.eqn-expr-input[data-id="${id}"]`);
+      const eq = eConf.equations.find(x => x.id === id);
+      if (!input || !eq) return;
+
+      const insertText = e.target.dataset.insert;
+      const cursorBack = parseInt(e.target.dataset.cursorBack, 10) || 0;
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+
+      const newVal = input.value.slice(0, start) + insertText + input.value.slice(end);
+      input.value = newVal;
+      eq.expression = newVal;
+
+      const newCursor = start + insertText.length - cursorBack;
+      input.focus();
+      input.setSelectionRange(newCursor, newCursor);
+
+      renderVarRangeBlocks();
+      recalculateSceneGeometry();
+    });
+  });
+
+  listContainer.querySelectorAll('.eqn-remove-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = parseInt(e.target.dataset.id, 10);
+      eConf.equations = eConf.equations.filter(x => x.id !== id);
+      renderEquationList();
+      renderVarRangeBlocks();
+      recalculateSceneGeometry();
+    });
+  });
+}
+
+/* ----- FREE VARIABLE DETECTION + RANGE CONTROLS (Eqn Mode) ----- */
+function formatVarVal(v, meta) {
+  return meta.isAngle ? Math.round(v) + '°' : v.toFixed(2);
+}
+
+// Known identifier tokens we recognize as variables (never functions/consts).
+const KNOWN_VAR_NAMES = Object.keys(VAR_META);
+const RESERVED_TOKENS = new Set(['sin','cos','tan','sqrt','abs','exp','log','pow','atan2','pi','Math','e']);
+
+// Scans all visible+non-empty equation RHS strings for the current system
+// and returns the set of variable names that should appear in the panel:
+// the active plot axis/axes, any role variable not used as an axis or LHS
+// (e.g. "z" in "phi = 2*rho" -- unreferenced, so it's a free/const slider
+// spanning its full range), plus any extra custom symbol the user typed.
+function detectFreeVariables() {
+  const eConf = eqnState[activeSystem];
+  const plotVars = getActivePlotAxes();
+  const roleVars = SYS_ROLE_VARS[activeSystem];
+  const found = new Set(plotVars); // plot axes are always present
+
+  const primary = eConf.equations.find(eq => eq.expression && eq.expression.trim());
+  const lhsVar = primary ? splitEquation(primary.expression).lhs.trim() : '';
+
+  // Any role variable that isn't the LHS (output) and isn't already a plot
+  // axis is an unused-but-real coordinate -- show it as a free parameter.
+  roleVars.forEach(v => {
+    if (v !== lhsVar && !plotVars.includes(v)) found.add(v);
+  });
+
+  eConf.equations.forEach(eq => {
+    if (!eq.expression || !eq.expression.trim()) return;
+    const { rhs } = splitEquation(eq.expression);
+    const tokens = rhs.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+    tokens.forEach(tok => {
+      if (RESERVED_TOKENS.has(tok)) return;
+      if (tok === lhsVar) return; // the solved-for variable is never a free var
+      found.add(tok);
+    });
+  });
+
+  return Array.from(found);
+}
+
+// Ensures every currently-used variable has a live range entry, using
+// sensible defaults for known symbols (rho/phi/theta/r/x/y) and a generic
+// numeric default for any custom free parameter the user introduces.
+function ensureVarRangeState(varNames) {
+  const eConf = eqnState[activeSystem];
+  varNames.forEach(v => {
+    if (eConf.varRanges[v]) return;
+    const meta = VAR_META[v];
+    eConf.varRanges[v] = meta
+      ? { min: meta.defaultMin, max: meta.defaultMax, step: meta.defaultStep, val: (meta.defaultMin + meta.defaultMax) / 2 }
+      : { min: -4, max: 4, step: 0.5, val: 0 };
+  });
+  // Drop stale entries for variables no longer used, so old sliders vanish.
+  Object.keys(eConf.varRanges).forEach(v => {
+    if (!varNames.includes(v)) delete eConf.varRanges[v];
+  });
+}
+
+function metaFor(varName) {
+  return VAR_META[varName] || { symbol: varName, name: varName + ' (custom parameter)', isAngle: false, defaultMin: -4, defaultMax: 4, defaultStep: 0.5, hardMin: -1000, hardMax: 1000 };
+}
+
+// Builds the slider count for a given [min, max, step]: step is the exact
+// per-notch increment, so the number of positions is floor((max-min)/step)+1.
+function stepCount(min, max, step) {
+  return Math.max(1, Math.floor((max - min) / step + 1e-9)) + 1;
+}
+
+function buildVarRangeBlockHTML(varName, meta, current, colorVar, isPlotAxis) {
+  const boundsHint = `bounds: [${meta.hardMin}, ${meta.hardMax}]${meta.isAngle ? '°' : ''}`;
+  const minMaxDisabled = isPlotAxis ? '' : 'disabled';
+  const stepDisabled = isPlotAxis ? 'disabled' : '';
+  return `
+    <div class="var-range-block" style="border-left: 3px solid ${colorVar}">
+      <div class="var-range-header">
+        <span class="var-range-symbol" style="color:${colorVar}">${meta.symbol}</span>
+        <span class="var-range-name">${meta.name}</span>
+        <div class="mode-switch" data-var="${varName}" style="margin-left:auto;">
+          <button type="button" class="fixed-mode-btn" data-var="${varName}" data-mode="fixed" title="Hold this variable constant">Fixed</button>
+          <button type="button" class="fixed-mode-btn" data-var="${varName}" data-mode="range" title="Sweep this variable as a surface axis">Range</button>
+        </div>
+      </div>
+      <div class="step-row">
+        <span class="step-label">MIN</span>
+        <input type="number" class="step-input" id="numin-min-${varName}" value="${current.min}" step="any" min="${meta.hardMin}" max="${meta.hardMax}" title="${boundsHint}" ${minMaxDisabled}>
+        <span class="step-label">MAX</span>
+        <input type="number" class="step-input" id="numin-max-${varName}" value="${current.max}" step="any" min="${meta.hardMin}" max="${meta.hardMax}" title="${boundsHint}" ${minMaxDisabled}>
+      </div>
+      <div class="step-row">
+        <span class="step-label">STEP</span>
+        <input type="number" class="step-input" id="step-${varName}" value="${current.step}" min="0.001" step="0.01" ${stepDisabled} title="${stepDisabled ? 'Step only applies in Fixed mode (1 slider notch = 1 step unit)' : ''}">
+      </div>
+      ${!isPlotAxis ? `
+      <div class="slider-row">
+        <span>Val</span>
+        <input type="range" id="pval-${varName}" min="${current.min}" max="${current.max}" step="${current.step}" value="${current.val}">
+        <div class="val-out" id="pval-out-${varName}">${formatVarVal(current.val, meta)}</div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function wireVarRangeBlock(container, varName, meta, isPlotAxis) {
+  const rangeState = eqnState[activeSystem].varRanges[varName];
+  const modeBtns = container.querySelectorAll(`.fixed-mode-btn[data-var="${varName}"]`);
+  const minInput = container.querySelector(`#numin-min-${varName}`);
+  const maxInput = container.querySelector(`#numin-max-${varName}`);
+  const stepInput = container.querySelector(`#step-${varName}`);
+  const valSlider = container.querySelector(`#pval-${varName}`);
+
+  // Clamp a min/max pair into this variable's physically valid domain
+  // (e.g. an azimuth angle can't range outside [0, 360] degrees).
+  const clampToDomain = () => {
+    rangeState.min = Math.min(Math.max(rangeState.min, meta.hardMin), meta.hardMax);
+    rangeState.max = Math.min(Math.max(rangeState.max, meta.hardMin), meta.hardMax);
+    if (rangeState.min > rangeState.max) {
+      const t = rangeState.min; rangeState.min = rangeState.max; rangeState.max = t;
+    }
+  };
+
+  const refreshSliderBounds = () => {
+    if (!valSlider) return;
+    valSlider.min = rangeState.min;
+    valSlider.max = rangeState.max;
+    valSlider.step = rangeState.step;
+    rangeState.val = Math.min(rangeState.max, Math.max(rangeState.min, rangeState.val));
+    valSlider.value = rangeState.val;
+    const out = document.getElementById(`pval-out-${varName}`);
+    if (out) out.innerText = formatVarVal(rangeState.val, meta);
+  };
+
+  const syncBoundsInputs = () => {
+    if (minInput) minInput.value = rangeState.min;
+    if (maxInput) maxInput.value = rangeState.max;
+  };
+
+  modeBtns.forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.mode === 'fixed') === !isPlotAxis);
+    btn.addEventListener('click', () => {
+      rangeState.fixed = (btn.dataset.mode === 'fixed');
+      // Re-render the whole panel so this variable's role (axis vs slider)
+      // and the mesh update together in one consistent pass.
+      renderVarRangeBlocks();
+      recalculateSceneGeometry();
+    });
+  });
+
+  minInput.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v)) rangeState.min = v;
+    refreshSliderBounds();
+    recalculateSceneGeometry();
+  });
+  minInput.addEventListener('change', () => {
+    clampToDomain();
+    syncBoundsInputs();
+    refreshSliderBounds();
+    recalculateSceneGeometry();
+  });
+
+  maxInput.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v)) rangeState.max = v;
+    refreshSliderBounds();
+    recalculateSceneGeometry();
+  });
+  maxInput.addEventListener('change', () => {
+    clampToDomain();
+    syncBoundsInputs();
+    refreshSliderBounds();
+    recalculateSceneGeometry();
+  });
+
+  stepInput.addEventListener('input', (e) => {
+    let v = parseFloat(e.target.value);
+    if (!v || v <= 0) v = meta.defaultStep || 0.5;
+    rangeState.step = v;
+    refreshSliderBounds();
+    recalculateSceneGeometry();
+  });
+
+  if (valSlider) {
+    valSlider.addEventListener('input', (e) => {
+      rangeState.val = parseFloat(e.target.value);
+      const out = document.getElementById(`pval-out-${varName}`);
+      if (out) out.innerText = formatVarVal(rangeState.val, meta);
+      recalculateSceneGeometry();
+    });
+  }
+}
+
+function renderVarRangeBlocks() {
+  const container = document.getElementById('eqn-var-ranges-container');
+  if (!container) return;
+
+  ensureVarRangeState(detectFreeVariables());
+  const plotVars = getEffectivePlotAxes();
+  const allVars = detectFreeVariables();
+
+  // Order: plot axes first (the two grid axes), then any extra free
+  // parameters the user introduced, in the order first seen.
+  const orderedVars = [...plotVars, ...allVars.filter(v => !plotVars.includes(v))];
+  const colorPalette = ['var(--coord1)', 'var(--coord2)', 'var(--coord3)', 'var(--intersection)', '#ec4899', '#a78bfa'];
+
+  if (orderedVars.length === 0) {
+    container.innerHTML = `<div class="var-range-empty">No variables detected yet — type an equation above.</div>`;
+    return;
+  }
+
+  container.innerHTML = orderedVars.map((varName, idx) => {
+    const meta = metaFor(varName);
+    const current = eqnState[activeSystem].varRanges[varName];
+    const isPlotAxis = plotVars.includes(varName);
+    return buildVarRangeBlockHTML(varName, meta, current, colorPalette[idx % colorPalette.length], isPlotAxis);
+  }).join('');
+
+  orderedVars.forEach(varName => wireVarRangeBlock(container, varName, metaFor(varName), plotVars.includes(varName)));
+}
+
+function renderCardBody(param) {
+  const body = document.getElementById(`body-${param.id}`);
+  const parent = body.parentElement;
+  parent.querySelector(`#mode-c-${param.id}`).className = param.mode === 'const' ? 'active' : '';
+  parent.querySelector(`#mode-r-${param.id}`).className = param.mode === 'range' ? 'active' : '';
+
+  if (param.mode === 'const') {
+    body.innerHTML = `
+      <div class="slider-group">
+        <div class="slider-row">
+          <span>Val</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.val}" id="sld-${param.id}">
+          <div class="val-out" id="out-${param.id}">${param.val}</div>
+        </div>
+      </div>
+    `;
+    body.querySelector(`#sld-${param.id}`).addEventListener('input', (e) => {
+      param.val = parseFloat(e.target.value);
+      document.getElementById(`out-${param.id}`).innerText = param.val;
+      recalculateSceneGeometry();
+    });
+  } else {
+    body.innerHTML = `
+      <div class="slider-group">
+        <div class="slider-row">
+          <span>Min</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.minRange}" id="sld-min-${param.id}">
+          <div class="val-out" id="out-min-${param.id}">${param.minRange}</div>
+        </div>
+        <div class="slider-row">
+          <span>Max</span>
+          <input type="range" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.maxRange}" id="sld-max-${param.id}">
+          <div class="val-out" id="out-max-${param.id}">${param.maxRange}</div>
+        </div>
+      </div>
+    `;
+    body.querySelector(`#sld-min-${param.id}`).addEventListener('input', (e) => {
+      param.minRange = Math.min(parseFloat(e.target.value), param.maxRange);
+      e.target.value = param.minRange;
+      document.getElementById('out-min-' + param.id).innerText = param.minRange;
+      recalculateSceneGeometry();
+    });
+    body.querySelector(`#sld-max-${param.id}`).addEventListener('input', (e) => {
+      param.maxRange = Math.max(parseFloat(e.target.value), param.minRange);
+      e.target.value = param.maxRange;
+      document.getElementById('out-max-' + param.id).innerText = param.maxRange;
+      recalculateSceneGeometry();
+    });
+  }
+}
+
+function toggleIntersectionVisibility() {
+  stateShowIntersections = !stateShowIntersections;
+  const btn = document.getElementById('hud-btn-intersections');
+  btn.innerText = `Intersections: ${stateShowIntersections ? 'ON' : 'OFF'}`;
+  if(!stateShowIntersections) btn.classList.add('inactive');
+  else btn.classList.remove('inactive');
+  
+  applyVisibilityStates();
+}
+
+function updateViewModeButtonText() {
+  const btn = document.getElementById('hud-btn-eye');
+  if (stateViewMode === 'fill') {
+    btn.innerText = '👁 View Mode: Fill Surface';
+  } else {
+    btn.innerText = '👁 View Mode: Intersected Lines';
+  }
+  btn.classList.remove('inactive');
+}
+
+function toggleViewMode() {
+  if (eqnModeOn) return; // locked to Intersected Lines while in Eqn Mode
+  stateViewMode = (stateViewMode === 'const') ? 'fill' : 'const';
+  updateViewModeButtonText();
+  // A rebuild is needed (not just a visibility flip) since which axes
+  // actually have range-mode geometry to fill can change, and the fill
+  // geometry may not have been built yet for the current settings.
+  recalculateSceneGeometry();
+}
+
+// Sub-option of the "Intersected Lines" View Mode: whether the full
+// translucent constant-coordinate surface planes are shown alongside the
+// intersection wireframes, or just the lines by themselves. This is a
+// pure visibility flip -- the const-surface meshes are already built
+// whenever View Mode isn't 'fill', so no rebuild is needed.
+function toggleConstSurfaces(checked) {
+  stateShowConstSurfaces = checked;
+  applyVisibilityStates();
+}
+
+function toggleAngleVisibility(show) {
+  stateShowAngles = show;
+  // A rebuild (not just a visibility flip) is needed because the angle-arc
+  // overlay geometry is now only constructed when stateShowAngles is true
+  // (see recalculateSceneGeometry), so it may not exist yet the first time
+  // this is switched on.
+  recalculateSceneGeometry();
+}
+
+function applyVisibilityStates() {
+  renderGroup.visible = (stateViewMode === 'const') && stateShowConstSurfaces;
+  intersectionGroup.visible = stateShowIntersections;
+  overlayGroup.visible = stateShowAngles;
+  fillGroup.visible = (stateViewMode === 'fill');
+}
+
+/* =====================================================================
+   MATHEMATICAL GEOMETRY ENGINE
+   ===================================================================== */
+const surfaceMaterial = (hex) => new THREE.MeshBasicMaterial({
+  color: hex, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false
+});
+const wireframeMaterial = (hex) => new THREE.LineBasicMaterial({
+  color: hex, transparent: true, opacity: 0.5
+});
+// Slightly more opaque than the boundary surfaceMaterial, and NOT double
+// sided -- solid volumes only need their outer skin shaded, and rendering
+// both faces on a closed, extruded region just doubles overdraw/flicker.
+const fillMaterial = (hex) => new THREE.MeshBasicMaterial({
+  color: hex, transparent: true, opacity: 0.22, side: THREE.FrontSide, depthWrite: false
+});
+
+function clearGroup(g) {
+  while(g.children.length > 0){ 
+    const obj = g.children[0]; 
+    g.remove(obj); 
+  }
+}
+
+function recalculateSceneGeometry() {
+  clearGroup(renderGroup);
+  clearGroup(intersectionGroup);
+  clearGroup(overlayGroup);
+  clearGroup(fillGroup);
+
+  if (eqnModeOn) {
+    buildCustomEquationMesh();
+  } else if (activeSystem === 'cart') {
+    const sys = config.cart;
+    if (stateViewMode !== 'fill') {
+      if (sys[0].visible) buildCartesianPlane('x', sys[0]);
+      if (sys[1].visible) buildCartesianPlane('y', sys[1]);
+      if (sys[2].visible) buildCartesianPlane('z', sys[2]);
+    } else {
+      buildCartesianFillVolume(sys);
+    }
+    buildCartesianIntersections(sys);
+
+  } else if (activeSystem === 'cyl') {
+    const sys = config.cyl;
+    if (stateViewMode !== 'fill') {
+      if (sys[0].visible) buildCylindricalRhoPlane(sys[0]);
+      if (sys[1].visible) buildCylindricalPhiPlane(sys[1]);
+      if (sys[2].visible) buildCartesianPlane('z', sys[2]);
+    } else {
+      buildCylindricalFillVolume(sys);
+    }
+    buildCylindricalIntersections(sys);
+    // Angle overlays are independent of View Mode -- built whenever the
+    // relevant angle coordinate is visible, regardless of const/fill.
+    if (stateShowAngles && sys[1].visible) buildCylindricalPhiAngleOverlay(sys[1]);
+
+  } else if (activeSystem === 'sph') {
+    const sys = config.sph;
+    if (stateViewMode !== 'fill') {
+      if (sys[0].visible) buildSphericalRPlane(sys[0]);
+      if (sys[1].visible) buildSphericalThetaPlane(sys[1]);
+      if (sys[2].visible) buildSphericalPhiPlane(sys[2]);
+    } else {
+      buildSphericalFillVolume(sys);
+    }
+    buildSphericalIntersections(sys);
+    // Angle overlays are independent of View Mode -- built whenever the
+    // relevant angle coordinate is visible, regardless of const/fill.
+    if (stateShowAngles && sys[1].visible) buildSphericalThetaAngleOverlay(sys[1]);
+    if (stateShowAngles && sys[2].visible) buildSphericalPhiAngleOverlay(sys[2]);
+  }
+
+  applyVisibilityStates();
+  updateHUDReadout();
+  updateMetricsReadout();
+}
+
+/* ----- CUSTOM EQUATION SURFACE GENERATOR ----- */
+// Splits a user-typed equation like "z = sin(x)*cos(y)" or "rho = 1 + 3*theta"
+// into its RHS expression, ready to be compiled and evaluated over the shared
+// x/y domain. The LHS name is cosmetic (whatever the user calls the output);
+// only the part after "=" is actually evaluated. If there's no "=" at all,
+// the whole string is treated as the RHS (e.g. just "sin(x)*cos(y)").
+function splitEquation(expr) {
+  const eqIndex = expr.indexOf('=');
+  if (eqIndex === -1) return { lhs: '', rhs: expr.trim() };
+  return { lhs: expr.slice(0, eqIndex).trim(), rhs: expr.slice(eqIndex + 1).trim() };
+}
+
+// Compiles an expression's RHS into a callable function of the given
+// variable name list (plot axes + any extra detected parameters).
+function parseSafeExpression(expr, varNames) {
+  const { rhs } = splitEquation(expr);
+
+  // Sanitize standard syntax to JavaScript equivalents
+  let sanitized = rhs.replace(/\bpi\b/gi, 'Math.PI').replace(/\^/g, '**');
+
+  // Inject Math prefixes safely for functions
+  const standardMath = ['sin', 'cos', 'tan', 'sqrt', 'abs', 'exp', 'log', 'pow', 'atan2'];
+  standardMath.forEach(fn => {
+    const regex = new RegExp('\\b' + fn + '\\b', 'g');
+    sanitized = sanitized.replace(regex, 'Math.' + fn);
+  });
+
+  // Bare "e" (Euler's number) -> Math.E, but only once function names are
+  // already prefixed with Math. so this doesn't clobber "exp" etc.
+  sanitized = sanitized.replace(/\be\b/g, 'Math.E');
+
+  return new Function(...varNames, `try { return ${sanitized}; } catch(e) { return 0; }`);
+}
+
+function hexToInt(hex) {
+  return parseInt(hex.replace('#', ''), 16);
+}
+
+// Reads the live Min/Max/Step for a given variable and turns it into a
+// clamped sample count for the plotted grid. Step is the exact per-notch
+// increment (e.g. min=0,max=10,step=1 -> 11 samples, one per unit).
+function axisSamples(varName, fallbackStep) {
+  const stored = eqnState[activeSystem].varRanges[varName];
+  const min = stored.min, max = stored.max;
+  const step = Math.max(0.001, stored.step || fallbackStep);
+  let n = stepCount(min, max, step);
+  n = Math.max(2, Math.min(120, n));
+  return { min, max, n };
+}
+
+// Converts a point expressed in the active system's natural coordinates
+// into a THREE.Vector3 in cartesian scene-space. `roleVals` is a map from
+// role-variable name (e.g. 'rho','phi','z' for cyl) to its value -- angles
+// are expected in DEGREES here, matching the sliders' native units. This
+// works regardless of which role variable is the equation's LHS, since all
+// three role values are always supplied.
+function toCartesian(roleVals) {
+  const degToRad = Math.PI / 180;
+  if (activeSystem === 'cart') {
+    return new THREE.Vector3(roleVals.x, roleVals.y, roleVals.z);
+  }
+  if (activeSystem === 'cyl') {
+    const rho = roleVals.rho, phiRad = roleVals.phi * degToRad, z = roleVals.z;
+    return new THREE.Vector3(rho * Math.cos(phiRad), rho * Math.sin(phiRad), z);
+  }
+  if (activeSystem === 'sph') {
+    const r = roleVals.r, thetaRad = roleVals.theta * degToRad, phiRad = roleVals.phi * degToRad;
+    return new THREE.Vector3(
+      r * Math.sin(thetaRad) * Math.cos(phiRad),
+      r * Math.sin(thetaRad) * Math.sin(phiRad),
+      r * Math.cos(thetaRad)
+    );
+  }
+}
+
+function buildCustomEquationMesh() {
+  const eConf = eqnState[activeSystem];
+  const impliedAxes = getActivePlotAxes();
+  const outputVar = getPrimaryOutputVar(impliedAxes);
+  const plotVars = getEffectivePlotAxes();
+  const degToRad = Math.PI / 180;
+
+  // Converts a variable's raw slider value (degrees for angle vars, as-is
+  // otherwise) into the value the compiled equation should actually see.
+  // Angle sliders are kept in degrees for the UI, but sin()/cos()/etc. in
+  // the equation need radians, so we convert right before evaluation.
+  const toEvalUnits = (varName, rawVal) => metaFor(varName).isAngle ? rawVal * degToRad : rawVal;
+
+  // Make sure range state exists for whatever variables are currently used
+  // (covers the case recalculateSceneGeometry fires before the panel is
+  // re-rendered, e.g. right after switching coordinate systems).
+  const allVars = detectFreeVariables();
+  ensureVarRangeState(allVars);
+
+  eConf.equations.forEach(eq => {
+    const errorDiv = document.querySelector(`.eqn-error-box[data-id="${eq.id}"]`);
+    if (errorDiv) errorDiv.innerText = '';
+    eq.errorMessage = '';
+
+    if (!eq.visible || !eq.expression || !eq.expression.trim()) return;
+
+    const { lhs, rhs } = splitEquation(eq.expression);
+    if (!rhs) return;
+
+    // This equation's own output role var: if its LHS is a recognized role
+    // variable, use that; otherwise fall back to the panel's shared output
+    // var (keeps things working even for a bare "sin(x)*cos(y)" with no "=").
+    const roleVars = SYS_ROLE_VARS[activeSystem];
+    const eqOutputVar = roleVars.includes(lhs.trim()) ? lhs.trim() : outputVar;
+
+    // Every variable this specific equation references, in a stable order:
+    // its grid axis/axes first, then any extra parameters (e.g. "k").
+    const tokens = rhs.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+    const extraVars = Array.from(new Set(tokens.filter(t => !RESERVED_TOKENS.has(t) && !plotVars.includes(t))));
+    const callVars = [...plotVars, ...extraVars];
+
+    let compiledFn;
+    try {
+      compiledFn = parseSafeExpression(eq.expression, callVars);
+      compiledFn(...callVars.map(v => toEvalUnits(v, eqnState[activeSystem].varRanges[v] ? eqnState[activeSystem].varRanges[v].val ?? 1 : 1))); // dry run
+    } catch (err) {
+      eq.errorMessage = 'Syntax Error: check notation.';
+      if (errorDiv) errorDiv.innerText = eq.errorMessage;
+      return;
+    }
+
+    // Extra (non-axis) parameters use their live slider "val", held
+    // constant across the whole sweep for this render pass. Angle-type
+    // extras are converted to radians here too. Any role variable that
+    // isn't a grid axis and isn't the equation's output also behaves like
+    // an extra parameter (e.g. "z" when the equation only depends on rho)
+    // -- it takes its slider value and stays constant across the sweep.
+    const constRoleVars = roleVars.filter(v => v !== eqOutputVar && !plotVars.includes(v));
+    const constRoleVals = {};
+    constRoleVars.forEach(v => {
+      const rs = eqnState[activeSystem].varRanges[v];
+      constRoleVals[v] = rs ? rs.val : 0;
+    });
+
+    const extraVals = extraVars.map(v => {
+      const rs = eqnState[activeSystem].varRanges[v];
+      return toEvalUnits(v, rs ? rs.val : 0);
+    });
+
+    let hadError = false;
+    const colorInt = hexToInt(eq.color);
+
+    if (plotVars.length >= 2) {
+      // SURFACE: sweep a 2D grid over both plot axes.
+      const [axis1, axis2] = plotVars;
+      const meta1 = metaFor(axis1), meta2 = metaFor(axis2);
+      const a1 = axisSamples(axis1, meta1.defaultStep);
+      const a2 = axisSamples(axis2, meta2.defaultStep);
+      const nI = a1.n, nJ = a2.n;
+      const vertices = [];
+      const indices = [];
+      for (let i = 0; i < nI; i++) {
+        const v1 = a1.min + (nI === 1 ? 0 : (i / (nI - 1)) * (a1.max - a1.min));
+        for (let j = 0; j < nJ; j++) {
+          const v2 = a2.min + (nJ === 1 ? 0 : (j / (nJ - 1)) * (a2.max - a2.min));
+          const e1 = toEvalUnits(axis1, v1);
+          const e2 = toEvalUnits(axis2, v2);
+          let out;
+          try { out = compiledFn(e1, e2, ...extraVals); } catch (e) { out = 0; hadError = true; }
+          if (typeof out !== 'number' || !isFinite(out)) out = 0;
+          out = Math.max(-6, Math.min(6, out));
+          const roleVals = { [axis1]: v1, [axis2]: v2, [eqOutputVar]: out, ...constRoleVals };
+          const p = toCartesian(roleVals);
+          vertices.push(p.x, p.y, p.z);
+        }
+      }
+      for (let i = 0; i < nI - 1; i++) {
+        for (let j = 0; j < nJ - 1; j++) {
+          const row1 = i * nJ;
+          const row2 = (i + 1) * nJ;
+          indices.push(row1 + j, row1 + j + 1, row2 + j);
+          indices.push(row1 + j + 1, row2 + j + 1, row2 + j);
+        }
+      }
+
+      if (hadError && errorDiv) {
+        eq.errorMessage = 'Some points failed to evaluate — check notation.';
+        errorDiv.innerText = eq.errorMessage;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geometry, surfaceMaterial(colorInt));
+      const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), wireframeMaterial(colorInt));
+      renderGroup.add(mesh, wire);
+
+    } else if (plotVars.length === 1) {
+      // CURVE: equation only truly depends on one role variable, so sweep
+      // that single axis and draw a 3D curve (all other role vars held at
+      // their constant slider values).
+      const axis1 = plotVars[0];
+      const meta1 = metaFor(axis1);
+      const a1 = axisSamples(axis1, meta1.defaultStep);
+      const nI = a1.n;
+      const points = [];
+      for (let i = 0; i < nI; i++) {
+        const v1 = a1.min + (nI === 1 ? 0 : (i / (nI - 1)) * (a1.max - a1.min));
+        const e1 = toEvalUnits(axis1, v1);
+        let out;
+        try { out = compiledFn(e1, ...extraVals); } catch (e) { out = 0; hadError = true; }
+        if (typeof out !== 'number' || !isFinite(out)) out = 0;
+        out = Math.max(-6, Math.min(6, out));
+        const roleVals = { [axis1]: v1, [eqOutputVar]: out, ...constRoleVals };
+        const p = toCartesian(roleVals);
+        points.push(p);
+      }
+
+      if (hadError && errorDiv) {
+        eq.errorMessage = 'Some points failed to evaluate — check notation.';
+        errorDiv.innerText = eq.errorMessage;
+      }
+
+      const curveGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const curve = new THREE.Line(curveGeo, new THREE.LineBasicMaterial({ color: colorInt, linewidth: 2 }));
+      renderGroup.add(curve);
+
+    } else {
+      // No real grid dependency at all (equation is a pure constant or only
+      // uses extra parameters) -- plot the single resulting point.
+      let out;
+      try { out = compiledFn(...extraVals); } catch (e) { out = 0; hadError = true; }
+      if (typeof out !== 'number' || !isFinite(out)) out = 0;
+      const roleVals = { [eqOutputVar]: out, ...constRoleVals };
+      const p = toCartesian(roleVals);
+      drawPointMarker(p, colorInt);
+    }
+  });
+}
+
+/* ----- MATHEMATICAL SURFACE GENERATION VECTORS ----- */
+function buildCartesianPlane(axis, param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const geo = new THREE.PlaneGeometry(8, 8, 4, 4);
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    
+    if (axis === 'x') {
+      mesh.rotation.y = Math.PI / 2; mesh.position.x = v;
+      wire.rotation.y = Math.PI / 2; wire.position.x = v;
+    } else if (axis === 'y') {
+      mesh.rotation.x = Math.PI / 2; mesh.position.y = v;
+      wire.rotation.x = Math.PI / 2; wire.position.y = v;
+    } else {
+      mesh.position.z = v; wire.position.z = v;
+    }
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildCylindricalRhoPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    if (v <= 0) return;
+    const geo = new THREE.CylinderGeometry(v, v, 8, 48, 1, true);
+    geo.rotateX(Math.PI / 2); 
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildCylindricalPhiPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const geo = new THREE.PlaneGeometry(4, 8, 1, 1);
+    geo.translate(2, 0, 0); 
+    
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    mesh.rotateZ(rad); mesh.rotateX(Math.PI / 2); 
+
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    wire.rotateZ(rad); wire.rotateX(Math.PI / 2);
+
+    renderGroup.add(mesh, wire);
+  });
+}
+
+// Angle-overlay arcs for cylindrical phi and spherical theta/phi are drawn
+// by these standalone functions so they can be called unconditionally from
+// recalculateSceneGeometry, independent of View Mode. They used to be drawn
+// only inside the const-surface plane builders above (buildCylindricalPhiPlane,
+// buildSphericalThetaPlane, buildSphericalPhiPlane), which meant the "Show
+// Angles" overlay simply never got built while in Fill Surface view mode --
+// making it look like enabling angles forced a switch to line/const mode.
+function buildCylindricalPhiAngleOverlay(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    drawAngleOverlayArc(rad, 1.8, 0, 'phi', param.colorHex, v);
+  });
+}
+
+function buildSphericalThetaAngleOverlay(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  // The theta arc is drawn in the plane at a fixed azimuth so it doesn't
+  // overlap the phi-const surface. That azimuth must track wherever phi
+  // actually is: param.val when phi is in Const mode, but phi.maxRange
+  // when phi is in Range mode (param.val is stale/unused in that mode --
+  // using it here made the theta arc appear frozen and not follow phi's
+  // range, which is the range-mode boundary someone would expect it to
+  // sit against).
+  const phiParam = config.sph[2];
+  const currentPhi = (phiParam.mode === 'const' ? phiParam.val : phiParam.maxRange) * Math.PI / 180;
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    drawAngleOverlayArc(rad, 2.2, currentPhi, 'theta', param.colorHex, v);
+  });
+}
+
+function buildSphericalPhiAngleOverlay(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    drawAngleOverlayArc(rad, 1.5, 0, 'phi', param.colorHex, v);
+  });
+}
+
+function buildSphericalRPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    if (v <= 0) return;
+    const geo = new THREE.SphereGeometry(v, 40, 30);
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+  });
+}
+
+ function buildSphericalThetaPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const points = [new THREE.Vector2(0.001, 0), new THREE.Vector2(4 * Math.sin(rad), 4 * Math.cos(rad))];
+    const geo = new THREE.LatheGeometry(points, 48);
+    geo.rotateX(Math.PI / 2); 
+
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function buildSphericalPhiPlane(param) {
+  const values = param.mode === 'const' ? [param.val] : [param.minRange, param.maxRange];
+  values.forEach(v => {
+    const rad = v * Math.PI / 180;
+    const geo = new THREE.PlaneGeometry(4, 8, 1, 1);
+    geo.translate(2, 0, 0);
+
+    const mesh = new THREE.Mesh(geo, surfaceMaterial(param.colorHex));
+    mesh.rotateZ(rad); mesh.rotateX(Math.PI / 2);
+    
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(param.colorHex));
+    wire.rotateZ(rad); wire.rotateX(Math.PI / 2);
+
+    renderGroup.add(mesh, wire);
+  });
+}
+
+function drawAngleOverlayArc(targetRad, radius, offsetPhi, type, colorHex, degValue) {
+  const points = [];
+  const segments = 32;
+  let colorStr = '#' + colorHex.toString(16).padStart(6, '0');
+  
+  if (type === 'phi') {
+    for (let i = 0; i <= segments; i++) {
+      const step = (i / segments) * targetRad;
+      points.push(new THREE.Vector3(radius * Math.cos(step), radius * Math.sin(step), 0.01));
+    }
+    const mid = targetRad / 2;
+    const labelTex = new THREE.CanvasTexture(createTextCanvas(`ϕ: ${degValue}°`, colorStr));
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex });
+    const sprite = new THREE.Sprite(labelMat);
+    sprite.position.set((radius + 0.4) * Math.cos(mid), (radius + 0.4) * Math.sin(mid), 0.05);
+    sprite.scale.set(1.0, 0.5, 1);
+    overlayGroup.add(sprite);
+
+    const arrowGeo = new THREE.ConeGeometry(0.06, 0.2, 4);
+    arrowGeo.rotateX(Math.PI / 2);
+    const arrowMesh = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
+    arrowMesh.position.set(radius * Math.cos(targetRad), radius * Math.sin(targetRad), 0.01);
+    arrowMesh.rotation.z = targetRad + Math.PI / 2;
+    overlayGroup.add(arrowMesh);
+
+  } else if (type === 'theta') {
+    for (let i = 0; i <= segments; i++) {
+      const step = (i / segments) * targetRad;
+      points.push(new THREE.Vector3(
+        radius * Math.sin(step) * Math.cos(offsetPhi),
+        radius * Math.sin(step) * Math.sin(offsetPhi),
+        radius * Math.cos(step)
+      ));
+    }
+    const mid = targetRad / 2;
+    const labelTex = new THREE.CanvasTexture(createTextCanvas(`θ: ${degValue}°`, colorStr));
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex });
+    const sprite = new THREE.Sprite(labelMat);
+    sprite.position.set(
+      (radius + 0.4) * Math.sin(mid) * Math.cos(offsetPhi),
+      (radius + 0.4) * Math.sin(mid) * Math.sin(offsetPhi),
+      (radius + 0.4) * Math.cos(mid)
+    );
+    sprite.scale.set(1.0, 0.5, 1);
+    overlayGroup.add(sprite);
+
+    const arrowGeo = new THREE.ConeGeometry(0.06, 0.2, 4);
+    arrowGeo.rotateZ(Math.PI / 2);
+    const arrowMesh = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({ color: colorHex }));
+    arrowMesh.position.set(
+      radius * Math.sin(targetRad) * Math.cos(offsetPhi),
+      radius * Math.sin(targetRad) * Math.sin(offsetPhi),
+      radius * Math.cos(targetRad)
+    );
+    arrowMesh.lookAt(
+      (radius + 1) * Math.sin(targetRad + 0.1) * Math.cos(offsetPhi),
+      (radius + 1) * Math.sin(targetRad + 0.1) * Math.sin(offsetPhi),
+      (radius + 1) * Math.cos(targetRad + 0.1)
+    );
+    overlayGroup.add(arrowMesh);
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  overlayGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: colorHex })));
+}
+
+/* =====================================================================
+   RANGE-AWARE COLOR-MAPPED INTERSECTION COMPUTATION ENGINES
+   ==================================================================== */
+function drawLineCurve(points, colorHex = 0xfacc15) {
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const mat = new THREE.LineBasicMaterial({ color: colorHex });
+  intersectionGroup.add(new THREE.Line(geo, mat));
+}
+
+function drawPointMarker(pos, colorHex = 0xfacc15) {
+  const geo = new THREE.SphereGeometry(0.12, 16, 16);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colorHex }));
+  mesh.position.copy(pos);
+  intersectionGroup.add(mesh);
+}
+
+function getInterval(param, defaultMin = -4, defaultMax = 4, scale = 1) {
+  if (!param.visible) return [defaultMin * scale, defaultMax * scale];
+  if (param.mode === 'const') return [param.val * scale, param.val * scale];
+  return [param.minRange * scale, param.maxRange * scale];
+}
+
+/* =====================================================================
+   UNIFIED FILL-VOLUME ENGINE
+   A single solid region clipped by ALL THREE coordinates at once, reusing
+   the exact same getInterval() bounds as the wireframe intersection
+   engine above. How many axes are actually "ranged" (min != max) decides
+   what gets built:
+     - 0 or 1 ranged axes -> a point or a line has no area/volume; fill
+       draws nothing (the wireframe intersection lines already show it).
+     - 2 ranged axes       -> a bounded 2D surface patch (clipped by both
+       ranges AND the third axis's fixed value) rendered as a solid sheet.
+     - 3 ranged axes       -> a genuine bounded 3D solid, clipped by all
+       three ranges simultaneously.
+   ===================================================================== */
+
+// Cartesian: the intervals ARE the box bounds directly -- no coordinate
+// transform needed. A degenerate (zero-thickness) box on the single-const
+// axis is exactly the 2D patch case, so one code path covers 2D and 3D.
+function buildCartesianFillVolume(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+  const [x1, x2] = getInterval(sys[0]);
+  const [y1, y2] = getInterval(sys[1]);
+  const [z1, z2] = getInterval(sys[2]);
+
+  const rangedCount = [x1 !== x2, y1 !== y2, z1 !== z2].filter(Boolean).length;
+  if (rangedCount < 2) return; // point or line -- no area/volume to fill
+
+  const eps = 0.001; // degenerate axis gets a hair of thickness so BoxGeometry still renders a visible sheet
+  const sx = Math.max(eps, x2 - x1), sy = Math.max(eps, y2 - y1), sz = Math.max(eps, z2 - z1);
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, cz = (z1 + z2) / 2;
+
+  const geo = new THREE.BoxGeometry(sx, sy, sz);
+  geo.translate(cx, cy, cz);
+  const mesh = new THREE.Mesh(geo, fillMaterial(sys[0].colorHex));
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(sys[1].colorHex));
+  fillGroup.add(mesh, wire);
+}
+
+// Cylindrical: bounded region rho in [r1,r2], phi in [p1,p2], z in [z1,z2].
+// Built as a custom parametric BufferGeometry -- a grid of rho/phi/z
+// samples on the "outer shell" of the clipped region, since a true
+// generalized rho/phi/z solid isn't one of THREE's primitive shapes.
+function buildCylindricalFillVolume(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+  const degToRad = Math.PI / 180;
+  let [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [p1, p2] = getInterval(sys[1], 0, 360, degToRad);
+  const [z1, z2] = getInterval(sys[2], -4, 4);
+
+  let rangedCount = [r1 !== r2, p1 !== p2, z1 !== z2].filter(Boolean).length;
+
+  // Special case: phi ranged (an arc or full circle) with rho pinned to a
+  // single const value and z pinned too. On its own that's just a 1D arc/
+  // circle (no area) under the general rule below -- but rho is a radius
+  // with a natural, implicit inner edge at 0, so "rho is const at some
+  // value while phi sweeps" reads as "the pie-slice/disc out to that
+  // radius," same as how a polar plot fills inward to the origin. Treat
+  // rho's fill interval as [0, rho.val] here so that sector/disc renders,
+  // without touching rho's own const/range semantics anywhere else (const
+  // surfaces, intersections, etc. are untouched).
+  if (rangedCount === 1 && p1 !== p2 && r1 === r2 && sys[0].mode === 'const' && r1 > 0.0001) {
+    r1 = 0;
+    rangedCount = 2;
+  }
+
+  if (rangedCount < 2) return;
+
+  const geo = buildCylindricalRegionGeometry(r1, r2, p1, p2, z1, z2);
+  const mesh = new THREE.Mesh(geo, fillMaterial(sys[0].colorHex));
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(sys[1].colorHex));
+  fillGroup.add(mesh, wire);
+}
+
+// Builds the boundary shell of the region {rho in [r1,r2], phi in [p1,p2],
+// z in [z1,z2]} as a closed triangle mesh: inner wall, outer wall, two
+// flat radial end-caps (at phi=p1 and phi=p2), and top/bottom annulus caps.
+function buildCylindricalRegionGeometry(r1, r2, p1, p2, z1, z2) {
+  const segs = 32;
+  const positions = [];
+  const pushQuad = (a, b, c, d) => { // a,b,c,d as [x,y,z] arrays, wound CCW
+    positions.push(...a, ...b, ...c,  ...a, ...c, ...d);
+  };
+
+  // Outer wall (rho = r2) and inner wall (rho = r1), each a rho-const
+  // cylindrical strip swept across phi in [p1,p2] and z in [z1,z2].
+  for (let i = 0; i < segs; i++) {
+    const a1 = p1 + (i / segs) * (p2 - p1);
+    const a2 = p1 + ((i + 1) / segs) * (p2 - p1);
+    const oc1 = [r2 * Math.cos(a1), r2 * Math.sin(a1)];
+    const oc2 = [r2 * Math.cos(a2), r2 * Math.sin(a2)];
+    pushQuad([oc1[0], oc1[1], z1], [oc2[0], oc2[1], z1], [oc2[0], oc2[1], z2], [oc1[0], oc1[1], z2]);
+
+    if (r1 > 0.0001) {
+      const ic1 = [r1 * Math.cos(a1), r1 * Math.sin(a1)];
+      const ic2 = [r1 * Math.cos(a2), r1 * Math.sin(a2)];
+      // Reverse winding vs. the outer wall since this face points inward.
+      pushQuad([ic2[0], ic2[1], z1], [ic1[0], ic1[1], z1], [ic1[0], ic1[1], z2], [ic2[0], ic2[1], z2]);
+    }
+  }
+
+  // Top (z2) and bottom (z1) annulus caps.
+  for (let i = 0; i < segs; i++) {
+    const a1 = p1 + (i / segs) * (p2 - p1);
+    const a2 = p1 + ((i + 1) / segs) * (p2 - p1);
+    const o1 = [r2 * Math.cos(a1), r2 * Math.sin(a1)], o2 = [r2 * Math.cos(a2), r2 * Math.sin(a2)];
+    const in1 = [r1 * Math.cos(a1), r1 * Math.sin(a1)], in2 = [r1 * Math.cos(a2), r1 * Math.sin(a2)];
+    pushQuad([in1[0], in1[1], z2], [in2[0], in2[1], z2], [o2[0], o2[1], z2], [o1[0], o1[1], z2]);
+    pushQuad([o1[0], o1[1], z1], [o2[0], o2[1], z1], [in2[0], in2[1], z1], [in1[0], in1[1], z1]);
+  }
+
+  // Radial end-caps at phi = p1 and phi = p2. NOTE: always draw these, even
+  // when phi isn't ranged (p1 === p2). In that degenerate case the two
+  // quads below coincide (same points, opposite winding), which is exactly
+  // what we want: a double-sided flat radial patch spanning rho in
+  // [r1,r2] and z in [z1,z2] at the fixed angle. That's the ENTIRE surface
+  // for the "rho+z ranged, phi const" case, not merely an end-cap -- so it
+  // must not be skipped.
+  {
+    const c1 = Math.cos(p1), s1 = Math.sin(p1), c2 = Math.cos(p2), s2 = Math.sin(p2);
+    pushQuad([r1*c1, r1*s1, z1], [r2*c1, r2*s1, z1], [r2*c1, r2*s1, z2], [r1*c1, r1*s1, z2]);
+    pushQuad([r2*c2, r2*s2, z1], [r1*c2, r1*s2, z1], [r1*c2, r1*s2, z2], [r2*c2, r2*s2, z2]);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Spherical: bounded region r in [r1,r2], theta in [t1,t2], phi in [p1,p2].
+function buildSphericalFillVolume(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+  const degToRad = Math.PI / 180;
+  let [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [t1, t2] = getInterval(sys[1], 0.01, 179.9, degToRad);
+  const [p1, p2] = getInterval(sys[2], 0, 360, degToRad);
+
+  let rangedCount = [r1 !== r2, t1 !== t2, p1 !== p2].filter(Boolean).length;
+
+  // Same reasoning as the cylindrical case: a single ranged angle (theta
+  // or phi) with r pinned const is a 1D arc under the general rule below,
+  // but r has a natural implicit inner edge at 0, so it reads as a sector/
+  // disc out to that radius. Fill from r=0 in that case only.
+  const angleRanged = (t1 !== t2) || (p1 !== p2);
+  if (rangedCount === 1 && angleRanged && r1 === r2 && sys[0].mode === 'const' && r1 > 0.0001) {
+    r1 = 0;
+    rangedCount = 2;
+  }
+
+  if (rangedCount < 2) return;
+
+  const geo = buildSphericalRegionGeometry(r1, r2, t1, t2, p1, p2);
+  const mesh = new THREE.Mesh(geo, fillMaterial(sys[0].colorHex));
+  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), wireframeMaterial(sys[1].colorHex));
+  fillGroup.add(mesh, wire);
+}
+
+// Builds the boundary shell of the region {r in [r1,r2], theta in [t1,t2],
+// phi in [p1,p2]} -- outer/inner spherical caps, two theta-const conical
+// walls, and two phi-const flat radial walls, all clipped together.
+function buildSphericalRegionGeometry(r1, r2, t1, t2, p1, p2) {
+  const tSegs = 24, pSegs = 32;
+  const positions = [];
+  const toXYZ = (r, t, p) => [r * Math.sin(t) * Math.cos(p), r * Math.sin(t) * Math.sin(p), r * Math.cos(t)];
+  const pushQuad = (a, b, c, d) => { positions.push(...a, ...b, ...c,  ...a, ...c, ...d); };
+
+  // Outer (r2) and inner (r1) spherical shell surfaces over the clipped
+  // theta/phi patch.
+  for (let i = 0; i < tSegs; i++) {
+    const ta = t1 + (i / tSegs) * (t2 - t1);
+    const tb = t1 + ((i + 1) / tSegs) * (t2 - t1);
+    for (let j = 0; j < pSegs; j++) {
+      const pa = p1 + (j / pSegs) * (p2 - p1);
+      const pb = p1 + ((j + 1) / pSegs) * (p2 - p1);
+      pushQuad(toXYZ(r2, ta, pa), toXYZ(r2, ta, pb), toXYZ(r2, tb, pb), toXYZ(r2, tb, pa));
+      if (r1 > 0.0001) {
+        pushQuad(toXYZ(r1, ta, pb), toXYZ(r1, ta, pa), toXYZ(r1, tb, pa), toXYZ(r1, tb, pb));
+      }
+    }
+  }
+
+  // Theta-const conical walls at theta = t1 and theta = t2. NOTE: always
+  // draw these, even when theta isn't ranged (t1 === t2). In that
+  // degenerate case both pushQuad calls trace the same conical patch with
+  // opposite winding, giving a double-sided surface -- exactly what's
+  // needed for the "r+phi ranged, theta const" case, where this patch is
+  // the entire required surface (a fixed-polar-angle cone/disc sector),
+  // not merely a wall bounding a theta range.
+  {
+    for (let j = 0; j < pSegs; j++) {
+      const pa = p1 + (j / pSegs) * (p2 - p1);
+      const pb = p1 + ((j + 1) / pSegs) * (p2 - p1);
+      pushQuad(toXYZ(r1, t1, pa), toXYZ(r1, t1, pb), toXYZ(r2, t1, pb), toXYZ(r2, t1, pa));
+      pushQuad(toXYZ(r2, t2, pa), toXYZ(r2, t2, pb), toXYZ(r1, t2, pb), toXYZ(r1, t2, pa));
+    }
+  }
+
+  // Phi-const flat radial walls at phi = p1 and phi = p2. NOTE: always draw
+  // these too, for the same reason -- when phi isn't ranged (p1 === p2)
+  // this is the entire surface for the "r+theta ranged, phi const" case
+  // (a flat half-plane radial sector), and the two coincident, oppositely
+  // wound quads make it double-sided.
+  {
+    for (let i = 0; i < tSegs; i++) {
+      const ta = t1 + (i / tSegs) * (t2 - t1);
+      const tb = t1 + ((i + 1) / tSegs) * (t2 - t1);
+      pushQuad(toXYZ(r1, ta, p1), toXYZ(r2, ta, p1), toXYZ(r2, tb, p1), toXYZ(r1, tb, p1));
+      pushQuad(toXYZ(r2, ta, p2), toXYZ(r1, ta, p2), toXYZ(r1, tb, p2), toXYZ(r2, tb, p2));
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function buildCartesianIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const [x1, x2] = getInterval(sys[0]);
+  const [y1, y2] = getInterval(sys[1]);
+  const [z1, z2] = getInterval(sys[2]);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const xSingle = (x1 === x2), ySingle = (y1 === y2), zSingle = (z1 === z2);
+
+  if (xSingle && ySingle && zSingle) {
+    drawPointMarker(new THREE.Vector3(x1, y1, z1), 0xfacc15);
+  } 
+  else if (xSingle && ySingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y1, z2)], c3);
+  } else if (xSingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y2, z1)], c2);
+  } else if (ySingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+  } 
+  else if (xSingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x1, y2, z1)], c2);
+    drawLineCurve([new THREE.Vector3(x1, y2, z1), new THREE.Vector3(x1, y2, z2)], c3);
+    drawLineCurve([new THREE.Vector3(x1, y2, z2), new THREE.Vector3(x1, y1, z2)], c2);
+    drawLineCurve([new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x1, y1, z1)], c3);
+  } else if (ySingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x2, y1, z1), new THREE.Vector3(x2, y1, z2)], c3);
+    drawLineCurve([new THREE.Vector3(x2, y1, z2), new THREE.Vector3(x1, y1, z2)], c1);
+    drawLineCurve([new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x1, y1, z1)], c3);
+  } else if (zSingle) { 
+    drawLineCurve([new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x2, y1, z1), new THREE.Vector3(x2, y2, z1)], c2);
+    drawLineCurve([new THREE.Vector3(x2, y2, z1), new THREE.Vector3(x1, y2, z1)], c1);
+    drawLineCurve([new THREE.Vector3(x1, y2, z1), new THREE.Vector3(x1, y1, z1)], c2);
+  } 
+  else { 
+    const c = [
+      new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y1, z1),
+      new THREE.Vector3(x2, y2, z1), new THREE.Vector3(x1, y2, z1),
+      new THREE.Vector3(x1, y1, z2), new THREE.Vector3(x2, y1, z2),
+      new THREE.Vector3(x2, y2, z2), new THREE.Vector3(x1, y2, z2)
+    ];
+    drawLineCurve([c[0], c[1]], c1); drawLineCurve([c[1], c[2]], c2); drawLineCurve([c[2], c[3]], c1); drawLineCurve([c[3], c[0]], c2);
+    drawLineCurve([c[4], c[5]], c1); drawLineCurve([c[5], c[6]], c2); drawLineCurve([c[6], c[7]], c1); drawLineCurve([c[7], c[4]], c2);
+    drawLineCurve([c[0], c[4]], c3); drawLineCurve([c[1], c[5]], c3); drawLineCurve([c[2], c[6]], c3); drawLineCurve([c[3], c[7]], c3);
+  }
+}
+
+function drawCylArc(r, pStart, pEnd, z, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32;
+  for (let i = 0; i <= segs; i++) {
+    const a = pStart + (i / segs) * (pEnd - pStart);
+    pts.push(new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), z));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function buildCylindricalIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const degToRad = Math.PI / 180;
+  const [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [p1, p2] = getInterval(sys[1], 0, 360, degToRad);
+  const [z1, z2] = getInterval(sys[2], -4, 4);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const rSingle = (r1 === r2), pSingle = (p1 === p2), zSingle = (z1 === z2);
+
+  if (rSingle && pSingle && zSingle) {
+    drawPointMarker(new THREE.Vector3(r1 * Math.cos(p1), r1 * Math.sin(p1), z1), 0xfacc15);
+  }
+  else if (rSingle && pSingle) {
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c3);
+  } else if (rSingle && zSingle) {
+    drawCylArc(r1, p1, p2, z1, c2);
+  } else if (pSingle && zSingle) {
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+  }
+  else if (rSingle) { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r1, p1, p2, z2, c2);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c3);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z1), new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z2)], c3);
+  } else if (pSingle) { 
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+    drawLineCurve([new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z2)], c3);
+    drawLineCurve([new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z2), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2)], c1);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z2), new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1)], c3);
+  } else if (zSingle) { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r2, p1, p2, z1, c2);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p1), r1*Math.sin(p1), z1), new THREE.Vector3(r2*Math.cos(p1), r2*Math.sin(p1), z1)], c1);
+    drawLineCurve([new THREE.Vector3(r1*Math.cos(p2), r1*Math.sin(p2), z1), new THREE.Vector3(r2*Math.cos(p2), r2*Math.sin(p2), z1)], c1);
+  }
+  else { 
+    drawCylArc(r1, p1, p2, z1, c2); drawCylArc(r1, p1, p2, z2, c2); drawCylArc(r2, p1, p2, z1, c2); drawCylArc(r2, p1, p2, z2, c2);
+    const rads = [r1, r2], angs = [p1, p2], zs = [z1, z2];
+    rads.forEach(r => { angs.forEach(a => drawLineCurve([new THREE.Vector3(r*Math.cos(a), r*Math.sin(a), z1), new THREE.Vector3(r*Math.cos(a), r*Math.sin(a), z2)], c3)) });
+    angs.forEach(a => { zs.forEach(z => drawLineCurve([new THREE.Vector3(r1*Math.cos(a), r1*Math.sin(a), z), new THREE.Vector3(r2*Math.cos(a), r2*Math.sin(a), z)], c1)) });
+  }
+}
+
+function drawSphPhiArc(r, theta, pStart, pEnd, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32, sinT = Math.sin(theta), cosT = Math.cos(theta);
+  for (let i = 0; i <= segs; i++) {
+    const p = pStart + (i / segs) * (pEnd - pStart);
+    pts.push(new THREE.Vector3(r * sinT * Math.cos(p), r * sinT * Math.sin(p), r * cosT));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function drawSphThetaArc(r, phi, tStart, tEnd, colorHex = 0xfacc15) {
+  const pts = [];
+  const segs = 32, cosP = Math.cos(phi), sinP = Math.sin(phi);
+  for (let i = 0; i <= segs; i++) {
+    const t = tStart + (i / segs) * (tEnd - tStart);
+    pts.push(new THREE.Vector3(r * Math.sin(t) * cosP, r * Math.sin(t) * sinP, r * Math.cos(t)));
+  }
+  drawLineCurve(pts, colorHex);
+}
+
+function drawSphRadialLine(r1, r2, theta, phi, colorHex = 0xfacc15) {
+  const sinT = Math.sin(theta), cosT = Math.cos(theta), cosP = Math.cos(phi), sinP = Math.sin(phi);
+  drawLineCurve([
+    new THREE.Vector3(r1 * sinT * cosP, r1 * sinT * sinP, r1 * cosT),
+    new THREE.Vector3(r2 * sinT * cosP, r2 * sinT * sinP, r2 * cosT)
+  ], colorHex);
+}
+
+function buildSphericalIntersections(sys) {
+  if (sys.filter(p => p.visible).length < 2) return;
+
+  const degToRad = Math.PI / 180;
+  const [r1, r2] = getInterval(sys[0], 0.1, 4);
+  const [t1, t2] = getInterval(sys[1], 0.01, 179.9, degToRad);
+  const [p1, p2] = getInterval(sys[2], 0, 360, degToRad);
+
+  const c1 = sys[0].colorHex;
+  const c2 = sys[1].colorHex;
+  const c3 = sys[2].colorHex;
+
+  const rSingle = (r1 === r2), tSingle = (t1 === t2), pSingle = (p1 === p2);
+
+  if (rSingle && tSingle && pSingle) {
+    drawPointMarker(new THREE.Vector3(r1*Math.sin(t1)*Math.cos(p1), r1*Math.sin(t1)*Math.sin(p1), r1*Math.cos(t1)), 0xfacc15);
+  }
+  else if (rSingle && tSingle) {
+    drawSphPhiArc(r1, t1, p1, p2, c3);
+  } else if (rSingle && pSingle) {
+    drawSphThetaArc(r1, p1, t1, t2, c2);
+  } else if (tSingle && pSingle) {
+    drawSphRadialLine(r1, r2, t1, p1, c1);
+  }
+  else if (rSingle) { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r1, t2, p1, p2, c3);
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r1, p2, t1, t2, c2);
+  } else if (tSingle) { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r2, t1, p1, p2, c3);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t1, p2, c1);
+  } else if (pSingle) { 
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r2, p1, t1, t2, c2);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t2, p1, c1);
+  }
+  else { 
+    drawSphPhiArc(r1, t1, p1, p2, c3); drawSphPhiArc(r1, t2, p1, p2, c3); drawSphPhiArc(r2, t1, p1, p2, c3); drawSphPhiArc(r2, t2, p1, p2, c3);
+    drawSphThetaArc(r1, p1, t1, t2, c2); drawSphThetaArc(r1, p2, t1, t2, c2); drawSphThetaArc(r2, p1, t1, t2, c2); drawSphThetaArc(r2, p2, t1, t2, c2);
+    drawSphRadialLine(r1, r2, t1, p1, c1); drawSphRadialLine(r1, r2, t1, p2, c1); drawSphRadialLine(r1, r2, t2, p1, c1); drawSphRadialLine(r1, r2, t2, p2, c1);
+  }
+}
+
+/* ----- MATHEMATICAL HUD DISPLAY TELEMETRY ----- */
+function updateHUDReadout() {
+  const panel = document.getElementById('hud-readout-panel');
+  let str = `<strong>System Mode: ${activeSystem.toUpperCase()}${eqnModeOn ? ' · EQN' : ''}</strong>`;
+
+  if (!eqnModeOn) {
+    if (activeSystem === 'cart') {
+      const sys = config.cart;
+      str += `<div>Pos: [X: ${sys[0].val.toFixed(1)}, Y: ${sys[1].val.toFixed(1)}, Z: ${sys[2].val.toFixed(1)}]</div>`;
+    } else if (activeSystem === 'cyl') {
+      const sys = config.cyl;
+      str += `<div>Cyl: [ρ: ${sys[0].val.toFixed(1)}m, ϕ: ${sys[1].val}°, Z: ${sys[2].val.toFixed(1)}m]</div>`;
+    } else if (activeSystem === 'sph') {
+      const sys = config.sph;
+      str += `<div>Sph: [r: ${sys[0].val.toFixed(1)}m, θ: ${sys[1].val}°, ϕ: ${sys[2].val}°]</div>`;
+    }
+  } else {
+    const eConf = eqnState[activeSystem];
+    const plotVars = getEffectivePlotAxes();
+    const visibleEqs = eConf.equations.filter(eq => eq.visible && eq.expression.trim());
+    str += `<div>Rendering ${visibleEqs.length} of ${eConf.equations.length} equation(s)</div>`;
+    visibleEqs.forEach(eq => {
+      str += `<div style="color:${eq.color}">${eq.expression}</div>`;
+    });
+    const rangeStrs = plotVars.map(v => {
+      const rs = eConf.varRanges[v];
+      const meta = metaFor(v);
+      return rs ? `${meta.symbol}: [${formatVarVal(rs.min, meta)}, ${formatVarVal(rs.max, meta)}]` : '';
+    }).filter(Boolean).join('&nbsp;&nbsp;');
+    str += `<div style="color:var(--text-muted); font-size:11px;">${rangeStrs}</div>`;
+  }
+  panel.innerHTML = str;
+}
+
+/* =====================================================================
+   LIVE AREA / VOLUME METRICS ENGINE
+   Computes a closed-form measure (length / area / volume) for the current
+   region, matching exactly what's rendered: same getInterval() bounds the
+   fill/intersection engines use, so the number and the visual never
+   disagree. Which formula applies depends on how many of the 3 axes are
+   actually ranged (min != max) -- 0 (point), 1 (line), 2 (area), or 3
+   (volume) -- and, per system, WHICH axes those are, since e.g. a
+   cylindrical patch with rho+z ranged is flat while one with phi+z ranged
+   is a curved wall with a different area element.
+   ===================================================================== */
+function fmtNum(n) {
+  if (!isFinite(n)) return '—';
+  const a = Math.abs(n);
+  const digits = a >= 100 ? 1 : (a >= 1 ? 2 : 3);
+  return n.toFixed(digits);
+}
+
+function computeMetrics() {
+  const sys = config[activeSystem];
+  const degToRad = Math.PI / 180;
+
+  if (activeSystem === 'cart') {
+    const [x1, x2] = getInterval(sys[0]);
+    const [y1, y2] = getInterval(sys[1]);
+    const [z1, z2] = getInterval(sys[2]);
+    const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1), dz = Math.abs(z2 - z1);
+    const ranged = [dx > 1e-9, dy > 1e-9, dz > 1e-9];
+    const n = ranged.filter(Boolean).length;
+
+    if (n === 0) return { label: 'Point', value: null, unit: '', formula: '(x₀, y₀, z₀) -- no area/volume' };
+    if (n === 1) {
+      const L = dx || dy || dz;
+      const axis = dx ? 'x' : (dy ? 'y' : 'z');
+      return { label: 'Length', value: L, unit: 'm', formula: `L = |Δ${axis}|` };
+    }
+    if (n === 2) {
+      const dims = [['x', dx], ['y', dy], ['z', dz]].filter(([, d]) => d > 1e-9);
+      const A = dims[0][1] * dims[1][1];
+      return { label: 'Area', value: A, unit: 'm²', formula: `A = Δ${dims[0][0]}·Δ${dims[1][0]}` };
+    }
+    const V = dx * dy * dz;
+    return { label: 'Volume', value: V, unit: 'm³', formula: 'V = Δx·Δy·Δz' };
+  }
+
+  if (activeSystem === 'cyl') {
+    let [r1, r2] = getInterval(sys[0], 0.1, 4);
+    const [p1, p2] = getInterval(sys[1], 0, 360, degToRad);
+    const [z1, z2] = getInterval(sys[2], -4, 4);
+    let dr = Math.abs(r2 - r1);
+    const dp = Math.abs(p2 - p1), dz = Math.abs(z2 - z1);
+    let rangedR = dr > 1e-9;
+    const rangedP = dp > 1e-9, rangedZ = dz > 1e-9;
+    let n = [rangedR, rangedP, rangedZ].filter(Boolean).length;
+
+    // Mirrors the same special case in buildCylindricalFillVolume: in Fill
+    // Surface mode, a full/partial phi sweep with rho pinned const (and
+    // positive) reads as a sector/disc filled in from rho=0, not a bare
+    // arc -- so the readout should report that area, not an arc length.
+    if (stateViewMode === 'fill' && n === 1 && rangedP && !rangedR && sys[0].mode === 'const' && r1 > 0.0001) {
+      r1 = 0; dr = Math.abs(r2 - r1); rangedR = true; n = 2;
+    }
+
+    if (n === 0) return { label: 'Point', value: null, unit: '', formula: '(ρ₀, ϕ₀, z₀) -- no area/volume' };
+    if (n === 1) {
+      if (rangedR) return { label: 'Length', value: dr, unit: 'm', formula: 'L = Δρ' };
+      if (rangedP) return { label: 'Length', value: ((r1 + r2) / 2) * dp, unit: 'm', formula: 'L = ρ·Δϕ  (arc)' };
+      return { label: 'Length', value: dz, unit: 'm', formula: 'L = Δz' };
+    }
+    if (n === 2) {
+      if (rangedR && rangedP) { // flat annular sector, z const
+        const A = 0.5 * (r2 * r2 - r1 * r1) * dp;
+        return { label: 'Area', value: A, unit: 'm²', formula: 'A = ½(ρ₂²-ρ₁²)·Δϕ  (sector)' };
+      }
+      if (rangedR && rangedZ) { // flat radial patch, phi const
+        const A = dr * dz;
+        return { label: 'Area', value: A, unit: 'm²', formula: 'A = Δρ·Δz  (flat patch)' };
+      }
+      // phi + z ranged, rho const -- curved cylindrical wall
+      const A = ((r1 + r2) / 2) * dp * dz;
+      return { label: 'Area', value: A, unit: 'm²', formula: 'A = ρ·Δϕ·Δz  (curved wall)' };
+    }
+    const V = 0.5 * (r2 * r2 - r1 * r1) * dp * dz;
+    return { label: 'Volume', value: V, unit: 'm³', formula: 'V = ½(ρ₂²-ρ₁²)·Δϕ·Δz' };
+  }
+
+  if (activeSystem === 'sph') {
+    let [r1, r2] = getInterval(sys[0], 0.1, 4);
+    const [t1, t2] = getInterval(sys[1], 0.01, 179.9, degToRad);
+    const [p1, p2] = getInterval(sys[2], 0, 360, degToRad);
+    let dr = Math.abs(r2 - r1);
+    const dt = Math.abs(t2 - t1), dp = Math.abs(p2 - p1);
+    const tMid = (t1 + t2) / 2;
+    let rangedR = dr > 1e-9;
+    const rangedT = dt > 1e-9, rangedP = dp > 1e-9;
+    let n = [rangedR, rangedT, rangedP].filter(Boolean).length;
+
+    // Mirrors the same special case in buildSphericalFillVolume: in Fill
+    // Surface mode, a single ranged angle (theta or phi) with r pinned
+    // const (and positive) reads as a sector/disc filled in from r=0, not
+    // a bare arc -- so the readout should report that area.
+    if (stateViewMode === 'fill' && n === 1 && (rangedT || rangedP) && !rangedR && sys[0].mode === 'const' && r1 > 0.0001) {
+      r1 = 0; dr = Math.abs(r2 - r1); rangedR = true; n = 2;
+    }
+    const rMid = (r1 + r2) / 2;
+
+    if (n === 0) return { label: 'Point', value: null, unit: '', formula: '(r₀, θ₀, ϕ₀) -- no area/volume' };
+    if (n === 1) {
+      if (rangedR) return { label: 'Length', value: dr, unit: 'm', formula: 'L = Δr' };
+      if (rangedT) return { label: 'Length', value: rMid * dt, unit: 'm', formula: 'L = r·Δθ  (arc)' };
+      return { label: 'Length', value: rMid * Math.sin(tMid) * dp, unit: 'm', formula: 'L = r·sinθ·Δϕ  (arc)' };
+    }
+    if (n === 2) {
+      if (rangedR && rangedT) { // flat half-plane sector, phi const
+        const A = 0.5 * (r2 * r2 - r1 * r1) * dt;
+        return { label: 'Area', value: A, unit: 'm²', formula: 'A = ½(r₂²-r₁²)·Δθ  (sector)' };
+      }
+      if (rangedR && rangedP) { // conical patch, theta const
+        const A = 0.5 * Math.sin(tMid) * (r2 * r2 - r1 * r1) * dp;
+        return { label: 'Area', value: A, unit: 'm²', formula: 'A = ½sinθ(r₂²-r₁²)·Δϕ  (cone)' };
+      }
+      // theta + phi ranged, r const -- curved spherical cap patch
+      const A = rMid * rMid * (Math.cos(t1) - Math.cos(t2)) * dp;
+      return { label: 'Area', value: A, unit: 'm²', formula: 'A = r²(cosθ₁-cosθ₂)·Δϕ  (cap)' };
+    }
+    const V = ((r2 ** 3 - r1 ** 3) / 3) * (Math.cos(t1) - Math.cos(t2)) * dp;
+    return { label: 'Volume', value: V, unit: 'm³', formula: 'V = (r₂³-r₁³)/3·(cosθ₁-cosθ₂)·Δϕ' };
+  }
+}
+
+function updateMetricsReadout() {
+  const labelEl = document.getElementById('metrics-label');
+  const valueEl = document.getElementById('metrics-value');
+  const formulaEl = document.getElementById('metrics-formula');
+  if (!labelEl) return;
+
+  if (eqnModeOn) {
+    labelEl.innerText = 'Measure';
+    valueEl.innerText = 'N/A';
+    formulaEl.innerText = 'No closed form for a custom equation surface';
+    return;
+  }
+
+  const m = computeMetrics();
+  labelEl.innerText = m.label;
+  valueEl.innerText = (m.value === null) ? '—' : `${fmtNum(m.value)} ${m.unit}`;
+  formulaEl.innerText = m.formula;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>
